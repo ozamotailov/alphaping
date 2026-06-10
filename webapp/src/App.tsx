@@ -139,32 +139,40 @@ export default function App() {
         )}
       </section>
 
-      {pf?.connected && (
+      {pf && (
         <section className="card">
           <div className="row between">
             <div className="h">Портфель</div>
-            <div className="mono">${fmtUsd(pf.totalUsd ?? 0)}</div>
+            {pf.connected && <div className="mono">${fmtUsd(pf.totalUsd ?? 0)}</div>}
           </div>
-          <div className="muted small">
-            TON: {(pf.ton?.qty ?? 0).toFixed(2)} (${fmtUsd(pf.ton?.usd ?? 0)}) · PnL 30д:{" "}
-            <span style={{ color: (pf.realizedPnl30d ?? 0) >= 0 ? "#3ddc84" : "#ff6b6b" }}>
-              {(pf.realizedPnl30d ?? 0) >= 0 ? "+" : "−"}${fmtUsd(Math.abs(pf.realizedPnl30d ?? 0))}
-            </span>
-          </div>
-          <ul className="list">
-            {(pf.holdings ?? []).slice(0, 8).map((h) => (
-              <li key={h.symbol + h.usd} className="row between item">
-                <span>
-                  {h.verified ? "" : "⚠️ "}
-                  {h.symbol}
+          {pf.connected ? (
+            <>
+              <div className="muted small">
+                TON: {(pf.ton?.qty ?? 0).toFixed(2)} (${fmtUsd(pf.ton?.usd ?? 0)}) · PnL 30д:{" "}
+                <span style={{ color: (pf.realizedPnl30d ?? 0) >= 0 ? "#3ddc84" : "#ff6b6b" }}>
+                  {(pf.realizedPnl30d ?? 0) >= 0 ? "+" : "−"}${fmtUsd(Math.abs(pf.realizedPnl30d ?? 0))}
                 </span>
-                <span className="muted small">${fmtUsd(h.usd)}</span>
-              </li>
-            ))}
-            {(pf.holdings?.length ?? 0) === 0 && (
-              <li className="muted small">Нет jetton-холдингов с ценой.</li>
-            )}
-          </ul>
+              </div>
+              <ul className="list">
+                {(pf.holdings ?? []).slice(0, 8).map((h) => (
+                  <li key={h.symbol + h.usd} className="row between item">
+                    <span>
+                      {h.verified ? "" : "⚠️ "}
+                      {h.symbol}
+                    </span>
+                    <span className="muted small">${fmtUsd(h.usd)}</span>
+                  </li>
+                ))}
+                {(pf.holdings?.length ?? 0) === 0 && (
+                  <li className="muted small">Нет jetton-холдингов с ценой.</li>
+                )}
+              </ul>
+            </>
+          ) : (
+            <div className="muted small">
+              Подключите TON-кошелёк (кнопка вверху справа), чтобы видеть портфель и PnL.
+            </div>
+          )}
         </section>
       )}
 

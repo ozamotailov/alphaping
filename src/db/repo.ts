@@ -206,6 +206,32 @@ export class Repo {
     );
   }
 
+  async poolsSeenCount(): Promise<number> {
+    const { rows } = await pool.query<{ n: string }>(`SELECT count(*)::int AS n FROM pools_seen`);
+    return Number(rows[0]?.n ?? 0);
+  }
+
+  // Массовая засевка базлайна пулов (чанками, чтобы не упереться в лимит параметров).
+  async markPoolsSeenBulk(
+    items: { address: string; dex: string; token0?: string; token1?: string }[],
+  ): Promise<void> {
+    const CHUNK = 1000;
+    for (let i = 0; i < items.length; i += CHUNK) {
+      const chunk = items.slice(i, i + CHUNK);
+      await pool.query(
+        `INSERT INTO pools_seen (address, dex, token0, token1)
+         SELECT * FROM unnest($1::text[], $2::text[], $3::text[], $4::text[])
+         ON CONFLICT (address) DO NOTHING`,
+        [
+          chunk.map((c) => c.address),
+          chunk.map((c) => c.dex),
+          chunk.map((c) => c.token0 ?? null),
+          chunk.map((c) => c.token1 ?? null),
+        ],
+      );
+    }
+  }
+
   async proAndWhaleSubscribers(): Promise<number[]> {
     const { rows } = await pool.query<{ tg_id: number }>(
       `SELECT tg_id FROM users WHERE tier IN ('pro', 'whale')`,

@@ -37,7 +37,8 @@ export function formatTon(addr: string, data: any): string {
 
 export function formatListing(pool: any, safety?: any): string {
   const badge = safety?.badge ?? "⚪";
-  const sym = safety?.symbol ?? "?";
+  // Если tonapi ещё не отдал метаданные нового токена — показываем короткий адрес, а не "?".
+  const sym = safety?.symbol || (safety?.address ? shortHash(safety.address) : "?");
   const liq = safety?.liquidityUsd != null ? ` · ликв. ~$${Number(safety.liquidityUsd).toFixed(0)}` : "";
   const reasons: string[] = safety?.reasons ?? [];
   const reasonsBlock = reasons.length ? "\n" + reasons.map((r) => "• " + r).join("\n") : "";

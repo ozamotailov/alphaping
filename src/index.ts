@@ -6,7 +6,7 @@ import { startAlertWorker } from "./alerts/queue";
 import { deliverAlert } from "./alerts/deliver";
 import { startPolling } from "./ingest/tonapi";
 import { startAccountStream } from "./ingest/tonapiStream";
-import { startListingPolling } from "./ingest/stonfi";
+import { startListingPolling, seedListingBaselineIfEmpty } from "./ingest/stonfi";
 import { discoverCandidates } from "./ingest/discovery";
 import { rebuildSmartList } from "./ingest/smartmoney";
 import { SMART_LIST_NAME } from "./constants";
@@ -26,6 +26,7 @@ async function main() {
   // 3) Ingest: реал-тайм SSE (Pro/Whale) + бэкфилл-поллер + новые листинги STON.fi
   startAccountStream(repo); // tonapi SSE → мгновенные алерты по pro-адресам
   startPolling(repo, 60_000); // бэкфилл/подстраховка и free-адреса
+  await seedListingBaselineIfEmpty(repo); // один раз: засеять существующие пулы без алертов
   startListingPolling(repo); // ston.fi новые пулы → safety → очередь алертов
 
   // 4) Сервис: даунгрейд истёкших подписок раз в час

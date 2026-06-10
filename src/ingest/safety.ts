@@ -6,6 +6,7 @@ export type Risk = "low" | "medium" | "high";
 export interface Safety {
   risk: Risk;
   badge: string; // 🟢 | 🟡 | 🔴
+  address: string;
   symbol: string | null;
   liquidityUsd: number | null;
   holders: number | null;
@@ -89,7 +90,7 @@ export async function checkJettonSafety(jetton: string, pool?: any): Promise<Saf
     risk = worse(risk, "medium");
   }
 
-  return { risk, badge: badgeOf(risk), symbol, liquidityUsd, holders, mintable, topHolderPct, reasons };
+  return { risk, badge: badgeOf(risk), address: jetton, symbol, liquidityUsd, holders, mintable, topHolderPct, reasons };
 }
 
 function numOrNull(v: unknown): number | null {
