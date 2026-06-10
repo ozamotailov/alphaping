@@ -117,6 +117,11 @@ export class Repo {
     return rows;
   }
 
+  async removeWatch(tgId: number, walletId: number): Promise<void> {
+    await pool.query(`DELETE FROM watches WHERE user_id = $1 AND wallet_id = $2`, [tgId, walletId]);
+    // Саму строку wallets не удаляем: она может использоваться другими юзерами/smart-money списком.
+  }
+
   // --- Ingest helpers ---
   // Все отслеживаемые адреса (для бэкфилл-поллера): watch-листы всех юзеров
   // + участники smart-money списка, если есть хотя бы один подписчик.

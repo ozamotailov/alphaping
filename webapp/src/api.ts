@@ -37,6 +37,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ address }),
     }),
+  removeWatch: (walletId: number) =>
+    req<{ ok: true }>(`/api/watch/${walletId}`, { method: "DELETE" }),
   invoice: (plan: string) =>
     req<{ link: string }>("/api/invoice", {
       method: "POST",

@@ -102,6 +102,23 @@ body {
   color: var(--btn-text);
   width: 100%;
 }
+.iconbtn {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.iconbtn:hover {
+  background: var(--surface2);
+  color: var(--text);
+}
+.iconbtn:disabled {
+  opacity: 0.4;
+}
 .badge {
   padding: 2px 10px;
   border-radius: 999px;

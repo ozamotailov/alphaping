@@ -75,6 +75,20 @@ export default function App() {
     }
   }
 
+  async function removeWatch(walletId: number) {
+    setBusy(true);
+    setErr(null);
+    try {
+      await api.removeWatch(walletId);
+      setWatches(await api.watchlist());
+      tg?.HapticFeedback?.notificationOccurred("success");
+    } catch (e) {
+      setErr(humanError(e as ApiError));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function buyPro() {
     setBusy(true);
     setErr(null);
@@ -173,7 +187,15 @@ export default function App() {
               <span className="mono">
                 {short(w.address_friendly)} {w.is_smartmoney ? "⭐" : ""}
               </span>
-              <span className="muted small">{w.label ?? ""}</span>
+              <button
+                className="iconbtn"
+                disabled={busy}
+                onClick={() => removeWatch(w.id)}
+                aria-label="Удалить из отслеживаемых"
+                title="Удалить"
+              >
+                ✕
+              </button>
             </li>
           ))}
           {watches.length === 0 && (

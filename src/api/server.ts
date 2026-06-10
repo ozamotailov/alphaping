@@ -94,6 +94,13 @@ export function createServer(bot: Bot, repo: Repo) {
     res.json({ ok: true, walletId: r.walletId });
   });
 
+  app.delete("/api/watch/:id", auth, async (req: AuthedRequest, res) => {
+    const walletId = Number(req.params.id);
+    if (!Number.isFinite(walletId)) return res.status(400).json({ error: "bad id" });
+    await repo.removeWatch(req.userId!, walletId);
+    res.json({ ok: true });
+  });
+
   // Кураторский smart-money список. Free видит только количество (locked), Pro/Whale — состав + статус подписки.
   app.get("/api/smart-money", auth, async (req: AuthedRequest, res) => {
     const user = await repo.getUser(req.userId!);
