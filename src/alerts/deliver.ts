@@ -57,10 +57,12 @@ function render(job: AlertJob): string {
 
 function passesFilters(filters: any, job: AlertJob): boolean {
   if (!filters || job.kind === "listing") return true;
-  const minUsd = Number(filters.minUsd ?? 0);
-  if (minUsd > 0) {
-    const usd = Number((job as any).data?.ton_usd ?? 0);
-    if (usd && usd < minUsd) return false;
+  // Фильтр по размеру сделки в TON (TON-нога свопа). minTon задаётся в filters.
+  const minTon = Number(filters.minTon ?? 0);
+  if (minTon > 0 && job.kind === "swap") {
+    const d: any = (job as any).data;
+    const ton = Number(d?.ton_in ?? d?.ton_out ?? 0) / 1e9;
+    if (ton > 0 && ton < minTon) return false;
   }
   return true;
 }

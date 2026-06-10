@@ -7,6 +7,8 @@ import { deliverAlert } from "./alerts/deliver";
 import { startPolling } from "./ingest/tonapi";
 import { startAccountStream } from "./ingest/tonapiStream";
 import { startListingPolling } from "./ingest/stonfi";
+import { discoverCandidates } from "./ingest/discovery";
+import { rebuildSmartList } from "./ingest/smartmoney";
 import { logger } from "./lib/logger";
 
 async function main() {
@@ -28,7 +30,20 @@ async function main() {
   // 4) Сервис: даунгрейд истёкших подписок раз в час
   setInterval(() => void repo.downgradeExpired(), 60 * 60 * 1000);
 
-  // 5) Запуск бота (long polling; в проде переключите на webhook)
+  // 5) Smart-money: автоподбор кандидатов (STON.fi) → скоринг → кураторский список.
+  //    Первый прогон через 15с после старта, далее каждые 6 часов.
+  const refreshSmartMoney = async () => {
+    try {
+      const candidates = await discoverCandidates();
+      if (candidates.length) await rebuildSmartList(repo, "TON Smart Money", candidates);
+    } catch (e) {
+      logger.warn("smart-money refresh failed", String(e));
+    }
+  };
+  setTimeout(() => void refreshSmartMoney(), 15_000);
+  setInterval(() => void refreshSmartMoney(), 6 * 60 * 60 * 1000);
+
+  // 6) Запуск бота (long polling; в проде переключите на webhook)
   await bot.start({
     onStart: (i) => logger.info(`bot @${i.username} started (long polling)`),
   });

@@ -238,4 +238,21 @@ export class Repo {
       client.release();
     }
   }
+
+  async getSmartListMembers(
+    name: string,
+    limit = 50,
+  ): Promise<{ address_friendly: string; score: number }[]> {
+    const { rows } = await pool.query<{ address_friendly: string; score: number }>(
+      `SELECT w.address_friendly, m.score
+       FROM smart_lists l
+       JOIN smart_list_members m ON m.list_id = l.id
+       JOIN wallets w ON w.id = m.wallet_id
+       WHERE l.name = $1
+       ORDER BY m.score DESC NULLS LAST
+       LIMIT $2`,
+      [name, limit],
+    );
+    return rows;
+  }
 }

@@ -2,6 +2,8 @@ import { Bot, InlineKeyboard } from "grammy";
 import type { Repo } from "../db/repo";
 import { config } from "../config";
 import { PLANS, refundPayment } from "./payments";
+import { discoverCandidates } from "../ingest/discovery";
+import { rebuildSmartList } from "../ingest/smartmoney";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("start", async (ctx) => {
@@ -29,6 +31,19 @@ export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("status", async (ctx) => {
     const u = await repo.getUser(ctx.from!.id);
     await ctx.reply(`Тариф: <b>${u?.tier ?? "free"}</b>`, { parse_mode: "HTML" });
+  });
+
+  // Сервисная команда: вручную пересобрать smart-money список (только администратор).
+  bot.command("rebuildsm", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    await ctx.reply("Собираю кандидатов со STON.fi и пересобираю smart-money список…");
+    try {
+      const candidates = await discoverCandidates();
+      const top = await rebuildSmartList(repo, "TON Smart Money", candidates);
+      await ctx.reply(`Готово: кандидатов ${candidates.length}, в списке ${top.length}.`);
+    } catch (e) {
+      await ctx.reply("Ошибка: " + String(e));
+    }
   });
 
   // Сервисная команда возврата (только администратор). Использование: /refund <charge_id>

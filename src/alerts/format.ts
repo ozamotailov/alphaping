@@ -5,10 +5,19 @@ import { shortAddr } from "../lib/ton";
 
 export function formatSwap(addr: string, data: any): string {
   const dex = data?.dex ?? "DEX";
-  const usd = data?.ton_usd ? ` (~$${Number(data.ton_usd).toFixed(0)})` : "";
+  const buy = data?.jetton_master_out && data?.ton_in;
+  const sell = data?.jetton_master_in && data?.ton_out;
+  let line = "своп";
+  if (buy) {
+    const sym = data.jetton_master_out?.symbol ?? "?";
+    line = `🟢 купил <b>${sym}</b> на ${(Number(data.ton_in) / 1e9).toFixed(2)} TON`;
+  } else if (sell) {
+    const sym = data.jetton_master_in?.symbol ?? "?";
+    line = `🔴 продал <b>${sym}</b> за ${(Number(data.ton_out) / 1e9).toFixed(2)} TON`;
+  }
   return (
-    `🟢 <b>Сделка smart-money</b>\n` +
-    `<code>${shortAddr(addr)}</code> своп на <b>${dex}</b>${usd}\n` +
+    `<b>Сделка отслеживаемого кошелька</b> · ${dex}\n` +
+    `<code>${shortAddr(addr)}</code>\n${line}\n` +
     `<a href="https://tonviewer.com/${addr}">tonviewer ↗</a>`
   );
 }

@@ -78,7 +78,16 @@ export function createServer(bot: Bot, repo: Repo) {
     res.json({ ok: true, walletId: r.walletId });
   });
 
-  // TODO: /api/portfolio, /api/smart-lists, /api/launches, /api/alerts ...
+  // Кураторский smart-money список. Free видит только количество (locked), Pro/Whale — состав.
+  app.get("/api/smart-money", auth, async (req: AuthedRequest, res) => {
+    const user = await repo.getUser(req.userId!);
+    const isPro = user?.tier === "pro" || user?.tier === "whale";
+    const members = await repo.getSmartListMembers("TON Smart Money", 50);
+    if (!isPro) return res.json({ locked: true, count: members.length });
+    res.json({ locked: false, members });
+  });
+
+  // TODO: /api/portfolio, /api/launches, /api/alerts ...
 
   // Опционально раздаём собранный фронтенд (webapp/dist) с того же origin, что и /api —
   // это позволяет тестировать в Telegram под ОДНИМ туннелем. Если dist нет — пропускаем.

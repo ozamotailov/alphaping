@@ -29,6 +29,23 @@ export interface TonApiEvent {
   actions: TonApiAction[];
 }
 
+// Цена TON в USD с кэшем (5 мин) — нужна для USD-оценки свопов (в JettonSwap нет готового usd).
+let tonUsdCache: { price: number; at: number } | null = null;
+export async function getTonUsd(): Promise<number> {
+  const now = Date.now();
+  if (tonUsdCache && now - tonUsdCache.at < 5 * 60_000) return tonUsdCache.price;
+  try {
+    const d = await getJson<{ rates?: { TON?: { prices?: { USD?: number } } } }>(
+      "/rates?tokens=ton&currencies=usd",
+    );
+    const price = d.rates?.TON?.prices?.USD ?? 0;
+    if (price > 0) tonUsdCache = { price, at: now };
+    return price || tonUsdCache?.price || 0;
+  } catch {
+    return tonUsdCache?.price ?? 0;
+  }
+}
+
 export async function getAccountEvents(
   raw: string,
   params: { limit?: number; startDate?: number } = {},
