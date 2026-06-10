@@ -9,6 +9,7 @@ import { startAccountStream } from "./ingest/tonapiStream";
 import { startListingPolling } from "./ingest/stonfi";
 import { discoverCandidates } from "./ingest/discovery";
 import { rebuildSmartList } from "./ingest/smartmoney";
+import { SMART_LIST_NAME } from "./constants";
 import { logger } from "./lib/logger";
 
 async function main() {
@@ -35,7 +36,7 @@ async function main() {
   const refreshSmartMoney = async () => {
     try {
       const candidates = await discoverCandidates();
-      if (candidates.length) await rebuildSmartList(repo, "TON Smart Money", candidates);
+      if (candidates.length) await rebuildSmartList(repo, SMART_LIST_NAME, candidates);
     } catch (e) {
       logger.warn("smart-money refresh failed", String(e));
     }

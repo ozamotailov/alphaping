@@ -46,4 +46,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ address }),
     }),
+  smartMoney: () =>
+    req<{
+      locked: boolean;
+      count?: number;
+      following?: boolean;
+      members?: { address_friendly: string; score: number }[];
+    }>("/api/smart-money"),
+  followSmartMoney: (on: boolean) =>
+    req<{ ok: true; following: boolean }>("/api/smart-money/follow", {
+      method: "POST",
+      body: JSON.stringify({ on }),
+    }),
 };

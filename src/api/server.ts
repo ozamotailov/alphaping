@@ -6,6 +6,7 @@ import { config } from "../config";
 import type { Repo } from "../db/repo";
 import { validateInitData } from "./auth";
 import { createSubscriptionInvoice, PLANS, type PlanId } from "../bot/payments";
+import { SMART_LIST_NAME } from "../constants";
 import { normalizeAddress } from "../lib/ton";
 import { logger } from "../lib/logger";
 
@@ -78,13 +79,24 @@ export function createServer(bot: Bot, repo: Repo) {
     res.json({ ok: true, walletId: r.walletId });
   });
 
-  // Кураторский smart-money список. Free видит только количество (locked), Pro/Whale — состав.
+  // Кураторский smart-money список. Free видит только количество (locked), Pro/Whale — состав + статус подписки.
   app.get("/api/smart-money", auth, async (req: AuthedRequest, res) => {
     const user = await repo.getUser(req.userId!);
     const isPro = user?.tier === "pro" || user?.tier === "whale";
-    const members = await repo.getSmartListMembers("TON Smart Money", 50);
+    const members = await repo.getSmartListMembers(SMART_LIST_NAME, 50);
     if (!isPro) return res.json({ locked: true, count: members.length });
-    res.json({ locked: false, members });
+    res.json({ locked: false, following: !!user?.follows_smartmoney, members });
+  });
+
+  // Подписка/отписка на smart-money список (Pro/Whale). Не тратит лимит кошельков:
+  // при follow ingest начинает покрывать участников списка, а доставка добавляет фолловера в получатели.
+  app.post("/api/smart-money/follow", auth, async (req: AuthedRequest, res) => {
+    const user = await repo.getUser(req.userId!);
+    const isPro = user?.tier === "pro" || user?.tier === "whale";
+    if (!isPro) return res.status(402).json({ error: "pro_required", upsell: "pro" });
+    const on = req.body?.on !== false; // по умолчанию true
+    await repo.setFollowSmartMoney(req.userId!, on);
+    res.json({ ok: true, following: on });
   });
 
   // TODO: /api/portfolio, /api/launches, /api/alerts ...

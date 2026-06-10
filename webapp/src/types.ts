@@ -12,6 +12,13 @@ export interface WatchItem {
   is_smartmoney: boolean;
 }
 
+export interface SmartMoney {
+  locked: boolean;
+  count?: number;
+  following?: boolean;
+  members?: { address_friendly: string; score: number }[];
+}
+
 export interface ApiError extends Error {
   status?: number;
   body?: { error?: string; upsell?: string };

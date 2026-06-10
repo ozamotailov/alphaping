@@ -1,16 +1,13 @@
 import { pool } from "./pool";
 import { normalizeAddress } from "../lib/ton";
+import { SMART_LIST_NAME } from "../constants";
 
 export interface UserRow {
   tg_id: number;
   tier: string;
   pro_expires_at: number | null;
   ton_address: string | null;
-}
-
-export interface TrackedAddress {
-  raw: string;
-  last_lt: number;
+  follows_smartmoney: boolean;
 }
 
 // Слой доступа к данным. Сознательно тонкий — сырой SQL, без ORM.
@@ -25,10 +22,15 @@ export class Repo {
 
   async getUser(tgId: number): Promise<UserRow | null> {
     const { rows } = await pool.query<UserRow>(
-      `SELECT tg_id, tier, pro_expires_at, ton_address FROM users WHERE tg_id = $1`,
+      `SELECT tg_id, tier, pro_expires_at, ton_address, follows_smartmoney
+       FROM users WHERE tg_id = $1`,
       [tgId],
     );
     return rows[0] ?? null;
+  }
+
+  async setFollowSmartMoney(tgId: number, on: boolean): Promise<void> {
+    await pool.query(`UPDATE users SET follows_smartmoney = $2 WHERE tg_id = $1`, [tgId, on]);
   }
 
   async setTonAddress(tgId: number, raw: string): Promise<void> {
@@ -116,10 +118,17 @@ export class Repo {
   }
 
   // --- Ingest helpers ---
-  async allTrackedAddresses(): Promise<TrackedAddress[]> {
-    const { rows } = await pool.query<TrackedAddress>(
-      `SELECT DISTINCT w.address_raw AS raw, w.last_lt AS last_lt
-       FROM wallets w JOIN watches t ON t.wallet_id = w.id`,
+  // Все отслеживаемые адреса (для бэкфилл-поллера): watch-листы всех юзеров
+  // + участники smart-money списка, если есть хотя бы один подписчик.
+  async allTrackedAddresses(listName = SMART_LIST_NAME): Promise<{ raw: string }[]> {
+    const { rows } = await pool.query<{ raw: string }>(
+      `SELECT w.address_raw AS raw FROM wallets w JOIN watches t ON t.wallet_id = w.id
+       UNION
+       SELECT w.address_raw FROM wallets w
+         JOIN smart_list_members m ON m.wallet_id = w.id
+         JOIN smart_lists l ON l.id = m.list_id AND l.name = $1
+         WHERE EXISTS (SELECT 1 FROM users u WHERE u.tier IN ('pro','whale') AND u.follows_smartmoney)`,
+      [listName],
     );
     return rows;
   }
@@ -136,26 +145,44 @@ export class Repo {
     return rows[0] ? Number(rows[0].last_lt) : 0;
   }
 
-  // Адреса, отслеживаемые Pro/Whale-пользователями — для реал-тайм SSE.
-  async proTrackedAddresses(): Promise<{ raw: string }[]> {
+  // Адреса для реал-тайм SSE: watch-листы Pro/Whale + участники smart-money списка,
+  // если есть хотя бы один Pro/Whale подписчик на список.
+  async proTrackedAddresses(listName = SMART_LIST_NAME): Promise<{ raw: string }[]> {
     const { rows } = await pool.query<{ raw: string }>(
-      `SELECT DISTINCT w.address_raw AS raw
-       FROM wallets w
-       JOIN watches t ON t.wallet_id = w.id
-       JOIN users u ON u.tg_id = t.user_id
-       WHERE u.tier IN ('pro', 'whale')`,
+      `SELECT w.address_raw AS raw
+         FROM wallets w
+         JOIN watches t ON t.wallet_id = w.id
+         JOIN users u ON u.tg_id = t.user_id
+         WHERE u.tier IN ('pro','whale')
+       UNION
+       SELECT w.address_raw FROM wallets w
+         JOIN smart_list_members m ON m.wallet_id = w.id
+         JOIN smart_lists l ON l.id = m.list_id AND l.name = $1
+         WHERE EXISTS (SELECT 1 FROM users u2 WHERE u2.tier IN ('pro','whale') AND u2.follows_smartmoney)`,
+      [listName],
     );
     return rows;
   }
 
-  async subscribersWatching(raw: string) {
+  // Получатели алерта по адресу: те, кто следит за ним напрямую (watch),
+  // плюс Pro/Whale-подписчики smart-money, если адрес — текущий участник списка.
+  async subscribersWatching(raw: string, listName = SMART_LIST_NAME) {
     const { rows } = await pool.query<{ tg_id: number; tier: string; filters: any }>(
       `SELECT u.tg_id, u.tier, t.filters
-       FROM wallets w
-       JOIN watches t ON t.wallet_id = w.id
-       JOIN users u ON u.tg_id = t.user_id
-       WHERE w.address_raw = $1`,
-      [raw],
+         FROM wallets w
+         JOIN watches t ON t.wallet_id = w.id
+         JOIN users u ON u.tg_id = t.user_id
+         WHERE w.address_raw = $1
+       UNION
+       SELECT u.tg_id, u.tier, '{}'::jsonb AS filters
+         FROM users u
+         WHERE u.tier IN ('pro','whale') AND u.follows_smartmoney
+           AND EXISTS (
+             SELECT 1 FROM wallets w2
+               JOIN smart_list_members m ON m.wallet_id = w2.id
+               JOIN smart_lists l ON l.id = m.list_id AND l.name = $2
+             WHERE w2.address_raw = $1)`,
+      [raw, listName],
     );
     return rows;
   }

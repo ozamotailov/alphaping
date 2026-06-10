@@ -23,7 +23,10 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
     const text = render(job);
     const delayedPass = Boolean((job as any).__delayed);
 
+    const seen = new Set<number>();
     for (const s of subs) {
+      if (seen.has(s.tg_id)) continue; // один юзер может попасть и через watch, и через follow
+      seen.add(s.tg_id);
       if (!passesFilters(s.filters, job)) continue;
       const isFree = s.tier === "free";
       if (delayedPass) {

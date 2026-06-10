@@ -7,9 +7,12 @@ CREATE TABLE IF NOT EXISTS users (
   pro_expires_at BIGINT,                                 -- unix, дата следующего списания
   charge_id      TEXT,                                   -- telegram_payment_charge_id (для refund/cancel)
   ton_address    TEXT,                                   -- подключённый через TON Connect кошелёк (raw)
+  follows_smartmoney BOOLEAN NOT NULL DEFAULT false,     -- подписан на кураторский smart-money список
   settings       JSONB NOT NULL DEFAULT '{}',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- На случай обновления существующей БД (CREATE TABLE IF NOT EXISTS не добавляет колонки):
+ALTER TABLE users ADD COLUMN IF NOT EXISTS follows_smartmoney BOOLEAN NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS wallets (
   id               BIGSERIAL PRIMARY KEY,

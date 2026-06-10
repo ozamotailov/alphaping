@@ -90,7 +90,9 @@ npm run dev
 - [x] Реал-тайм через tonapi SSE (Pro/Whale)
 - [x] Анти-скам safety-проверка листингов (skip risk=high)
 - [x] Скоринг smart-money по ROI/win-rate (`rebuildSmartList`)
-- [ ] Источник кандидатов smart-money (активные свопперы пулов) — сейчас передаётся извне
+- [x] Автоподбор кандидатов из активных свопперов STON.fi (`discovery.ts`, авто каждые 6ч + `/rebuildsm`)
+- [x] Follow-list: Pro подписывается на smart-money → ingest покрывает участников → алерты (без траты лимита watch)
+- [x] Smart-money на фронте (`/api/smart-money` + секция с тоглом «Отслеживать»)
 - [ ] PnL/портфель, DeFi-позиции/IL (Whale)
 - [ ] DeDust, фарминг/airdrop-борд
 

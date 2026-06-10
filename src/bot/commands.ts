@@ -4,6 +4,7 @@ import { config } from "../config";
 import { PLANS, refundPayment } from "./payments";
 import { discoverCandidates } from "../ingest/discovery";
 import { rebuildSmartList } from "../ingest/smartmoney";
+import { SMART_LIST_NAME } from "../constants";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("start", async (ctx) => {
@@ -39,7 +40,7 @@ export function registerCommands(bot: Bot, repo: Repo): void {
     await ctx.reply("Собираю кандидатов со STON.fi и пересобираю smart-money список…");
     try {
       const candidates = await discoverCandidates();
-      const top = await rebuildSmartList(repo, "TON Smart Money", candidates);
+      const top = await rebuildSmartList(repo, SMART_LIST_NAME, candidates);
       await ctx.reply(`Готово: кандидатов ${candidates.length}, в списке ${top.length}.`);
     } catch (e) {
       await ctx.reply("Ошибка: " + String(e));
