@@ -74,7 +74,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="row between">
-        <div className="brand">🛰️ AlphaPing</div>
+        <div className="brand">🛰️ TonSonar</div>
         <TonConnectButton />
       </header>
 
@@ -129,7 +129,7 @@ export default function App() {
 
       {!isPro && (
         <section className="card upsell">
-          <div className="h">AlphaPing Pro — 500⭐/мес</div>
+          <div className="h">TonSonar Pro — 500⭐/мес</div>
           <ul className="bullets">
             <li>50 кошельков вместо 3</li>
             <li>Реал-тайм алерты</li>

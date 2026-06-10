@@ -6,9 +6,9 @@ import { PLANS, refundPayment } from "./payments";
 export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("start", async (ctx) => {
     await repo.upsertUser(ctx.from!.id);
-    const kb = new InlineKeyboard().webApp("🛰️ Открыть AlphaPing", config.WEBAPP_URL);
+    const kb = new InlineKeyboard().webApp("🛰️ Открыть TonSonar", config.WEBAPP_URL);
     await ctx.reply(
-      "Привет! <b>AlphaPing</b> следит за TON-кошельками и smart-money прямо в Telegram.\n\n" +
+      "Привет! <b>TonSonar</b> следит за TON-кошельками и smart-money прямо в Telegram.\n\n" +
         "• Портфель и PnL по твоему TON-кошельку\n" +
         "• Алерты сделок отслеживаемых кошельков\n" +
         "• Новые jetton-листинги на STON.fi / DeDust\n\n" +
