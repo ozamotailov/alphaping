@@ -19,6 +19,26 @@ export interface SmartMoney {
   members?: { address_friendly: string; score: number }[];
 }
 
+export interface Holding {
+  symbol: string;
+  name: string;
+  qty: number;
+  usd: number;
+  image?: string;
+  verified: boolean;
+}
+
+export interface Portfolio {
+  connected: boolean;
+  address?: string;
+  totalUsd?: number;
+  ton?: { qty: number; usd: number };
+  holdings?: Holding[];
+  realizedPnl30d?: number;
+  trades?: number;
+  winRate?: number;
+}
+
 export interface ApiError extends Error {
   status?: number;
   body?: { error?: string; upsell?: string };

@@ -1,5 +1,5 @@
 import { tg } from "./telegram";
-import type { Me, WatchItem, ApiError } from "./types";
+import type { Me, WatchItem, ApiError, Portfolio } from "./types";
 
 // Пусто => запросы идут на тот же origin (относительные /api/...),
 // что работает и когда фронт раздаётся бэкендом, и через dev-прокси Vite.
@@ -30,6 +30,7 @@ async function req<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   me: () => req<Me>("/api/me"),
+  portfolio: () => req<Portfolio>("/api/portfolio"),
   watchlist: () => req<WatchItem[]>("/api/watchlist"),
   addWatch: (address: string) =>
     req<{ ok: true; walletId: number }>("/api/watch", {

@@ -2,23 +2,30 @@ import { useCallback, useEffect, useState } from "react";
 import { TonConnectButton, useTonAddress } from "@tonconnect/ui-react";
 import { api } from "./api";
 import { tg, openInvoice } from "./telegram";
-import type { ApiError, Me, SmartMoney, WatchItem } from "./types";
+import type { ApiError, Me, Portfolio, SmartMoney, WatchItem } from "./types";
 
 export default function App() {
   const tonAddress = useTonAddress(); // friendly-адрес или "" если не подключён
   const [me, setMe] = useState<Me | null>(null);
   const [watches, setWatches] = useState<WatchItem[]>([]);
   const [sm, setSm] = useState<SmartMoney | null>(null);
+  const [pf, setPf] = useState<Portfolio | null>(null);
   const [addr, setAddr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [m, w, s] = await Promise.all([api.me(), api.watchlist(), api.smartMoney()]);
+      const [m, w, s, p] = await Promise.all([
+        api.me(),
+        api.watchlist(),
+        api.smartMoney(),
+        api.portfolio(),
+      ]);
       setMe(m);
       setWatches(w);
       setSm(s);
+      setPf(p);
     } catch (e) {
       setErr(humanError(e as ApiError));
     }
@@ -28,10 +35,10 @@ export default function App() {
     load();
   }, [load]);
 
-  // Передаём подключённый TON-адрес на бэкенд (read-only, без ключей)
+  // Передаём подключённый TON-адрес на бэкенд (read-only, без ключей) и обновляем портфель.
   useEffect(() => {
-    if (tonAddress) api.setTonAddress(tonAddress).catch(() => {});
-  }, [tonAddress]);
+    if (tonAddress) api.setTonAddress(tonAddress).then(() => load()).catch(() => {});
+  }, [tonAddress, load]);
 
   async function addWatch() {
     if (!addr.trim()) return;
@@ -118,6 +125,35 @@ export default function App() {
         )}
       </section>
 
+      {pf?.connected && (
+        <section className="card">
+          <div className="row between">
+            <div className="h">Портфель</div>
+            <div className="mono">${fmtUsd(pf.totalUsd ?? 0)}</div>
+          </div>
+          <div className="muted small">
+            TON: {(pf.ton?.qty ?? 0).toFixed(2)} (${fmtUsd(pf.ton?.usd ?? 0)}) · PnL 30д:{" "}
+            <span style={{ color: (pf.realizedPnl30d ?? 0) >= 0 ? "#3ddc84" : "#ff6b6b" }}>
+              {(pf.realizedPnl30d ?? 0) >= 0 ? "+" : "−"}${fmtUsd(Math.abs(pf.realizedPnl30d ?? 0))}
+            </span>
+          </div>
+          <ul className="list">
+            {(pf.holdings ?? []).slice(0, 8).map((h) => (
+              <li key={h.symbol + h.usd} className="row between item">
+                <span>
+                  {h.verified ? "" : "⚠️ "}
+                  {h.symbol}
+                </span>
+                <span className="muted small">${fmtUsd(h.usd)}</span>
+              </li>
+            ))}
+            {(pf.holdings?.length ?? 0) === 0 && (
+              <li className="muted small">Нет jetton-холдингов с ценой.</li>
+            )}
+          </ul>
+        </section>
+      )}
+
       <section className="card">
         <div className="h">Отслеживаемые кошельки</div>
         <div className="row">
@@ -203,6 +239,11 @@ export default function App() {
 
 function short(a: string): string {
   return a.length > 12 ? a.slice(0, 4) + "…" + a.slice(-4) : a;
+}
+
+function fmtUsd(n: number): string {
+  if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  return n.toFixed(2);
 }
 
 function humanError(e: ApiError): string {

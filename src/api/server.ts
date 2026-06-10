@@ -7,6 +7,7 @@ import type { Repo } from "../db/repo";
 import { validateInitData } from "./auth";
 import { createSubscriptionInvoice, PLANS, type PlanId } from "../bot/payments";
 import { SMART_LIST_NAME } from "../constants";
+import { getPortfolio } from "../ingest/portfolio";
 import { normalizeAddress } from "../lib/ton";
 import { logger } from "../lib/logger";
 
@@ -64,6 +65,20 @@ export function createServer(bot: Bot, repo: Repo) {
     if (!norm) return res.status(400).json({ error: "bad address" });
     await repo.setTonAddress(req.userId!, norm.raw);
     res.json({ ok: true, address: norm.friendly });
+  });
+
+  // Портфель/PnL по подключённому (или переданному) TON-адресу.
+  app.get("/api/portfolio", auth, async (req: AuthedRequest, res) => {
+    const user = await repo.getUser(req.userId!);
+    const address = (typeof req.query.address === "string" && req.query.address) || user?.ton_address || "";
+    if (!address) return res.json({ connected: false });
+    try {
+      const p = await getPortfolio(address);
+      res.json({ connected: true, ...p });
+    } catch (e) {
+      logger.error("portfolio error", String(e));
+      res.status(502).json({ error: "portfolio_failed" });
+    }
   });
 
   // Watchlist
