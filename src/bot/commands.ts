@@ -84,6 +84,13 @@ export function registerCommands(bot: Bot, repo: Repo): void {
   // имитация «smart-money купил TOKEN» с кнопкой свопа.
   bot.command("demo", async (ctx) => {
     if (ctx.from!.id !== config.ADMIN_ID) return;
+    const chatId = ctx.chat!.id;
+    // Удаляем саму команду /demo, чтобы в записи не осталось следа (в личке бот это умеет).
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      /* нет прав — удалишь вручную за время задержки */
+    }
     const jetton = "EQAJ8uWd7EBqsmpSWaRdf_I-8R8-XHwh3gsNKhy-UrdrPcUo"; // HMSTR
     const sample = {
       dex: "stonfi",
@@ -91,14 +98,21 @@ export function registerCommands(bot: Bot, repo: Repo): void {
       jetton_master_out: { address: jetton, symbol: "HMSTR" },
     };
     const text = formatSwap("EQChhrKIi_Ab-cwXfXw0pFMY1MwEGVfb2s6gwDKNuGZdolkm", sample, "en");
-    await ctx.reply(text, {
-      parse_mode: "HTML",
-      link_preview_options: { is_disabled: true },
-      reply_markup: new InlineKeyboard().webApp(
-        t("en", "buy_button"),
-        `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
-      ),
-    });
+    const kb = new InlineKeyboard().webApp(
+      t("en", "buy_button"),
+      `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
+    );
+    // Задержка (по умолчанию 10с, можно `/demo 5`): алерт приходит «нативно» для записи.
+    const sec = Math.min(60, Math.max(0, Number(ctx.match) || 10));
+    setTimeout(() => {
+      void ctx.api
+        .sendMessage(chatId, text, {
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          reply_markup: kb,
+        })
+        .catch(() => {});
+    }, sec * 1000);
   });
 
   // Сервисная команда возврата (только администратор). Использование: /refund <charge_id>
