@@ -34,6 +34,20 @@ export function registerCommands(bot: Bot, repo: Repo): void {
     await ctx.reply(`Тариф: <b>${u?.tier ?? "free"}</b>`, { parse_mode: "HTML" });
   });
 
+  bot.command("help", async (ctx) => {
+    await ctx.reply(
+      "<b>TonSonar</b> — алерты по smart-money и кошелькам TON.\n\n" +
+        "<b>Как пользоваться:</b>\n" +
+        "1. Открой приложение (кнопка меню слева от поля ввода).\n" +
+        "2. Подключи TON-кошелёк → увидишь портфель и PnL.\n" +
+        "3. Добавляй кошельки в отслеживание — будут алерты их сделок.\n" +
+        "4. Смотри ленту новых jetton-листингов.\n\n" +
+        "<b>Pro</b> (/pro): 50 кошельков, реал-тайм алерты, кураторские smart-money списки, без рекламы.\n\n" +
+        "🔒 Только read-only адреса — приватные ключи мы никогда не запрашиваем.",
+      { parse_mode: "HTML" },
+    );
+  });
+
   // Сервисная команда: вручную пересобрать smart-money список (только администратор).
   bot.command("rebuildsm", async (ctx) => {
     if (ctx.from!.id !== config.ADMIN_ID) return;

@@ -2,6 +2,7 @@ import { config } from "./config";
 import { Repo } from "./db/repo";
 import { applySchema } from "./db/migrate";
 import { buildBot } from "./bot/bot";
+import { configureBotProfile } from "./bot/profile";
 import { createServer } from "./api/server";
 import { startAlertWorker } from "./alerts/queue";
 import { deliverAlert } from "./alerts/deliver";
@@ -63,6 +64,9 @@ async function main() {
   };
   setTimeout(() => void refreshSmartMoney(), 15_000);
   setInterval(() => void refreshSmartMoney(), 6 * 60 * 60 * 1000);
+
+  // 5.5) Полиш профиля бота: имя/описание/команды/Menu Button (идемпотентно).
+  await configureBotProfile(bot);
 
   // 6) Запуск бота (long polling; в проде переключите на webhook)
   await bot.start({
