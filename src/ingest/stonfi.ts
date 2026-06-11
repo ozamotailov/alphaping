@@ -1,5 +1,6 @@
 import { alertQueue } from "../alerts/queue";
 import type { Repo } from "../db/repo";
+import { config } from "../config";
 import { logger } from "../lib/logger";
 import { checkJettonSafety } from "./safety";
 import { normalizeAddress } from "../lib/ton";
@@ -67,14 +68,37 @@ export async function pollNewPools(repo: Repo): Promise<void> {
     return;
   }
 
-  for (const p of pools) {
-    if (!p.address || (await repo.poolSeen(p.address))) continue;
-    await repo.markPoolSeen({
-      address: p.address,
-      dex: "stonfi",
-      token0: p.token0_address,
-      token1: p.token1_address,
-    });
+  // Один запрос вместо 45k: множество уже виденных пулов держим в памяти.
+  const seen = new Set(await repo.allSeenPoolAddresses());
+  const fresh = pools.filter((p) => p.address && !seen.has(p.address));
+  if (fresh.length === 0) return;
+
+  const toSeen = (p: StonPool) => ({
+    address: p.address,
+    dex: "stonfi",
+    token0: p.token0_address,
+    token1: p.token1_address,
+  });
+
+  // Анти-флуд: слишком много «новых» за цикл = аномалия/пропущенный базлайн
+  // (напр. пустой pools_seen). Помечаем seen БЕЗ алертов, чтобы не залить пользователей.
+  if (fresh.length > config.MAX_NEW_PER_CYCLE) {
+    await repo.markPoolsSeenBulk(fresh.map(toSeen));
+    logger.warn(
+      `listing: ${fresh.length} новых пулов за цикл (> ${config.MAX_NEW_PER_CYCLE}) — аномалия/базлайн, помечаю seen без алертов`,
+    );
+    return;
+  }
+
+  for (const p of fresh) {
+    await repo.markPoolSeen(toSeen(p));
+
+    // Фильтр мусора: низкая ликвидность пула (берём прямо из данных STON.fi, без tonapi).
+    const liq = Number(p.lp_total_supply_usd ?? 0);
+    if (!(liq >= config.MIN_LIQUIDITY_USD)) {
+      logger.info(`listing skipped (low liq ~$${liq.toFixed(0)} < $${config.MIN_LIQUIDITY_USD}): ${p.address}`);
+      continue;
+    }
 
     const jetton = pickNewJetton(p);
     if (!jetton) continue; // обе стороны котировочные (напр. USDT/TON) — не новый листинг

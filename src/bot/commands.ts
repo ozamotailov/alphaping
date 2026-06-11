@@ -4,6 +4,8 @@ import { config } from "../config";
 import { PLANS, refundPayment } from "./payments";
 import { discoverCandidates } from "../ingest/discovery";
 import { rebuildSmartList } from "../ingest/smartmoney";
+import { checkJettonSafety } from "../ingest/safety";
+import { formatListing } from "../alerts/format";
 import { SMART_LIST_NAME } from "../constants";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
@@ -56,6 +58,39 @@ export function registerCommands(bot: Bot, repo: Repo): void {
       const candidates = await discoverCandidates();
       const top = await rebuildSmartList(repo, SMART_LIST_NAME, candidates);
       await ctx.reply(`Готово: кандидатов ${candidates.length}, в списке ${top.length}.`);
+    } catch (e) {
+      await ctx.reply("Ошибка: " + String(e));
+    }
+  });
+
+  // Диагностика листингов (только администратор).
+  bot.command("liststatus", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    const seen = await repo.poolsSeenCount();
+    const subs = (await repo.proAndWhaleSubscribers()).length;
+    await ctx.reply(
+      "📡 Листинги:\n" +
+        `• пулов в базе (seen): ${seen}\n` +
+        `• мин. ликвидность: $${config.MIN_LIQUIDITY_USD}\n` +
+        `• макс. новых за цикл: ${config.MAX_NEW_PER_CYCLE}\n` +
+        `• опрос STON.fi: каждые 5 мин\n` +
+        `• получателей (Pro/Whale): ${subs}`,
+    );
+  });
+
+  // Тестовый листинг-алерт себе (проверка формата/доставки/кнопки свопа).
+  bot.command("testlisting", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    const jetton = "EQAJ8uWd7EBqsmpSWaRdf_I-8R8-XHwh3gsNKhy-UrdrPcUo"; // HMSTR
+    try {
+      const safety = await checkJettonSafety(jetton);
+      await ctx.reply(formatListing({ dex: "STON.fi", address: "test" }, safety), {
+        parse_mode: "HTML",
+        reply_markup: new InlineKeyboard().webApp(
+          "🟢 Купить на STON.fi",
+          `${config.WEBAPP_URL}?swap=${jetton}`,
+        ),
+      });
     } catch (e) {
       await ctx.reply("Ошибка: " + String(e));
     }

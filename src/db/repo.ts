@@ -211,6 +211,11 @@ export class Repo {
     return Number(rows[0]?.n ?? 0);
   }
 
+  async allSeenPoolAddresses(): Promise<string[]> {
+    const { rows } = await pool.query<{ address: string }>(`SELECT address FROM pools_seen`);
+    return rows.map((r) => r.address);
+  }
+
   // Массовая засевка базлайна пулов (чанками, чтобы не упереться в лимит параметров).
   async markPoolsSeenBulk(
     items: { address: string; dex: string; token0?: string; token1?: string }[],
