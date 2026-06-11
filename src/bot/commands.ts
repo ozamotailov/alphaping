@@ -80,22 +80,39 @@ export function registerCommands(bot: Bot, repo: Repo): void {
     );
   });
 
-  // Тестовый листинг-алерт себе (проверка формата/доставки/кнопки свопа).
+  // Тестовый листинг-алерт себе с задержкой (для записи видео): удаляем команду,
+  // через N секунд (по умолчанию 10, можно `/testlisting 5`) алерт приходит «нативно».
   bot.command("testlisting", async (ctx) => {
     if (ctx.from!.id !== config.ADMIN_ID) return;
+    const chatId = ctx.chat!.id;
+    const sec = Math.min(60, Math.max(0, Number(ctx.match) || 10));
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      /* нет прав — удалишь вручную за время задержки */
+    }
     const jetton = "EQAJ8uWd7EBqsmpSWaRdf_I-8R8-XHwh3gsNKhy-UrdrPcUo"; // HMSTR
+    let text: string;
     try {
       const safety = await checkJettonSafety(jetton);
-      await ctx.reply(formatListing({ dex: "STON.fi", address: "test" }, safety, "en"), {
-        parse_mode: "HTML",
-        reply_markup: new InlineKeyboard().webApp(
-          t("en", "buy_button"),
-          `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
-        ),
-      });
+      text = formatListing({ dex: "STON.fi", address: "test" }, safety, "en");
     } catch (e) {
-      await ctx.reply("Ошибка: " + String(e));
+      await ctx.api.sendMessage(chatId, "Ошибка: " + String(e));
+      return;
     }
+    const kb = new InlineKeyboard().webApp(
+      t("en", "buy_button"),
+      `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
+    );
+    setTimeout(() => {
+      void ctx.api
+        .sendMessage(chatId, text, {
+          parse_mode: "HTML",
+          link_preview_options: { is_disabled: true },
+          reply_markup: kb,
+        })
+        .catch(() => {});
+    }, sec * 1000);
   });
 
   // Геройский «демо-алерт» для записи видео (только администратор):
