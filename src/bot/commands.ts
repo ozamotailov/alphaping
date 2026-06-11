@@ -1,53 +1,37 @@
 import { Bot, InlineKeyboard } from "grammy";
 import type { Repo } from "../db/repo";
 import { config } from "../config";
-import { PLANS, refundPayment } from "./payments";
+import { refundPayment } from "./payments";
 import { discoverCandidates } from "../ingest/discovery";
 import { rebuildSmartList } from "../ingest/smartmoney";
 import { checkJettonSafety } from "../ingest/safety";
-import { formatListing } from "../alerts/format";
+import { formatListing, formatSwap } from "../alerts/format";
 import { SMART_LIST_NAME } from "../constants";
+import { t, pickLang } from "../i18n";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("start", async (ctx) => {
-    await repo.upsertUser(ctx.from!.id);
-    const kb = new InlineKeyboard().webApp("🛰️ Открыть TonSonar", config.WEBAPP_URL);
-    await ctx.reply(
-      "Привет! <b>TonSonar</b> следит за TON-кошельками и smart-money прямо в Telegram.\n\n" +
-        "• Портфель и PnL по твоему TON-кошельку\n" +
-        "• Алерты сделок отслеживаемых кошельков\n" +
-        "• Новые jetton-листинги на STON.fi / DeDust\n\n" +
-        "Открой приложение и добавь первый кошелёк 👇",
-      { parse_mode: "HTML", reply_markup: kb },
-    );
+    const lang = pickLang(ctx.from?.language_code);
+    await repo.upsertUser(ctx.from!.id, ctx.from?.language_code);
+    const kb = new InlineKeyboard().webApp(t(lang, "open_app"), config.WEBAPP_URL);
+    await ctx.reply(t(lang, "start"), { parse_mode: "HTML", reply_markup: kb });
   });
 
   bot.command("pro", async (ctx) => {
-    const kb = new InlineKeyboard().webApp("⭐ Оформить Pro", `${config.WEBAPP_URL}?upsell=pro`);
-    await ctx.reply(
-      `<b>${PLANS.pro.title}</b> — ${PLANS.pro.stars}⭐/мес:\n` +
-        "50 кошельков · реал-тайм · кураторские smart-money списки · без рекламы.",
-      { parse_mode: "HTML", reply_markup: kb },
-    );
+    const lang = pickLang(ctx.from?.language_code);
+    const kb = new InlineKeyboard().webApp(t(lang, "get_pro"), `${config.WEBAPP_URL}?upsell=pro`);
+    await ctx.reply(t(lang, "pro_pitch"), { parse_mode: "HTML", reply_markup: kb });
   });
 
   bot.command("status", async (ctx) => {
+    const lang = pickLang(ctx.from?.language_code);
     const u = await repo.getUser(ctx.from!.id);
-    await ctx.reply(`Тариф: <b>${u?.tier ?? "free"}</b>`, { parse_mode: "HTML" });
+    await ctx.reply(t(lang, "status", { tier: u?.tier ?? "free" }), { parse_mode: "HTML" });
   });
 
   bot.command("help", async (ctx) => {
-    await ctx.reply(
-      "<b>TonSonar</b> — алерты по smart-money и кошелькам TON.\n\n" +
-        "<b>Как пользоваться:</b>\n" +
-        "1. Открой приложение (кнопка меню слева от поля ввода).\n" +
-        "2. Подключи TON-кошелёк → увидишь портфель и PnL.\n" +
-        "3. Добавляй кошельки в отслеживание — будут алерты их сделок.\n" +
-        "4. Смотри ленту новых jetton-листингов.\n\n" +
-        "<b>Pro</b> (/pro): 50 кошельков, реал-тайм алерты, кураторские smart-money списки, без рекламы.\n\n" +
-        "🔒 Только read-only адреса — приватные ключи мы никогда не запрашиваем.",
-      { parse_mode: "HTML" },
-    );
+    const lang = pickLang(ctx.from?.language_code);
+    await ctx.reply(t(lang, "help"), { parse_mode: "HTML" });
   });
 
   // Сервисная команда: вручную пересобрать smart-money список (только администратор).
@@ -84,16 +68,37 @@ export function registerCommands(bot: Bot, repo: Repo): void {
     const jetton = "EQAJ8uWd7EBqsmpSWaRdf_I-8R8-XHwh3gsNKhy-UrdrPcUo"; // HMSTR
     try {
       const safety = await checkJettonSafety(jetton);
-      await ctx.reply(formatListing({ dex: "STON.fi", address: "test" }, safety), {
+      await ctx.reply(formatListing({ dex: "STON.fi", address: "test" }, safety, "en"), {
         parse_mode: "HTML",
         reply_markup: new InlineKeyboard().webApp(
-          "🟢 Купить на STON.fi",
-          `${config.WEBAPP_URL}?swap=${jetton}`,
+          t("en", "buy_button"),
+          `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
         ),
       });
     } catch (e) {
       await ctx.reply("Ошибка: " + String(e));
     }
+  });
+
+  // Геройский «демо-алерт» для записи видео (только администратор):
+  // имитация «smart-money купил TOKEN» с кнопкой свопа.
+  bot.command("demo", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    const jetton = "EQAJ8uWd7EBqsmpSWaRdf_I-8R8-XHwh3gsNKhy-UrdrPcUo"; // HMSTR
+    const sample = {
+      dex: "stonfi",
+      ton_in: 250 * 1e9,
+      jetton_master_out: { address: jetton, symbol: "HMSTR" },
+    };
+    const text = formatSwap("EQChhrKIi_Ab-cwXfXw0pFMY1MwEGVfb2s6gwDKNuGZdolkm", sample, "en");
+    await ctx.reply(text, {
+      parse_mode: "HTML",
+      link_preview_options: { is_disabled: true },
+      reply_markup: new InlineKeyboard().webApp(
+        t("en", "buy_button"),
+        `${config.WEBAPP_URL}?swap=${jetton}&lang=en`,
+      ),
+    });
   });
 
   // Сервисная команда возврата (только администратор). Использование: /refund <charge_id>

@@ -1,0 +1,38 @@
+1
+00:00:00,000 --> 00:00:06,000
+TON traders miss the moment smart money moves.
+
+2
+00:00:06,000 --> 00:00:14,000
+TonSonar watches wallets in real time
+and pings you the instant they buy.
+
+3
+00:00:14,000 --> 00:00:24,000
+One tap on the alert opens a swap —
+pre-filled, no copy-paste.
+
+4
+00:00:24,000 --> 00:00:36,000
+Powered by the STON.fi SDK:
+live quote, price impact, slippage.
+
+5
+00:00:36,000 --> 00:00:46,000
+Sign in your wallet — the swap routes
+straight through STON.fi.
+
+6
+00:00:46,000 --> 00:00:58,000
+Your portfolio and PnL update instantly.
+Keys never leave your wallet.
+
+7
+00:00:58,000 --> 00:01:08,000
+Curated smart-money lists, scam-filtered
+new listings — all one tap from a swap.
+
+8
+00:01:08,000 --> 00:01:15,000
+TonSonar — from signal to STON.fi swap,
+inside Telegram.

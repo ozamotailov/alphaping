@@ -50,15 +50,15 @@ export async function checkJettonSafety(jetton: string, pool?: any): Promise<Saf
     holders = info.holders_count ?? null;
 
     if (mintable) {
-      reasons.push("Минт не отключён (mintable)");
+      reasons.push("Mint not disabled (mintable)");
       risk = worse(risk, "high");
     }
     if (info.verification === "blacklist") {
-      reasons.push("В блок-листе tonapi");
+      reasons.push("Blacklisted on tonapi");
       risk = worse(risk, "high");
     }
     if (holders != null && holders < 30) {
-      reasons.push(`Мало холдеров: ${holders}`);
+      reasons.push(`Few holders: ${holders}`);
       risk = worse(risk, "medium");
     }
 
@@ -69,24 +69,24 @@ export async function checkJettonSafety(jetton: string, pool?: any): Promise<Saf
       if (top) {
         topHolderPct = (Number(top) / supply) * 100;
         if (topHolderPct > 50) {
-          reasons.push(`Топ-холдер держит ${topHolderPct.toFixed(0)}%`);
+          reasons.push(`Top holder owns ${topHolderPct.toFixed(0)}%`);
           risk = worse(risk, "high");
         } else if (topHolderPct > 25) {
-          reasons.push(`Топ-холдер ${topHolderPct.toFixed(0)}%`);
+          reasons.push(`Top holder ${topHolderPct.toFixed(0)}%`);
           risk = worse(risk, "medium");
         }
       }
     }
   } catch (e) {
     logger.warn("safety: jetton fetch failed", { jetton, e: String(e) });
-    reasons.push("Не удалось проверить jetton");
+    reasons.push("Couldn't verify jetton");
     risk = worse(risk, "medium");
   }
 
   // Ликвидность из пула STON.fi (поле tvl часто недоступно — тогда null, без штрафа).
   const liquidityUsd = numOrNull(pool?.tvl_usd ?? pool?.lp_total_supply_usd);
   if (liquidityUsd != null && liquidityUsd < 1000) {
-    reasons.push(`Низкая ликвидность ~$${liquidityUsd.toFixed(0)}`);
+    reasons.push(`Low liquidity ~$${liquidityUsd.toFixed(0)}`);
     risk = worse(risk, "medium");
   }
 

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { api } from "./api";
 import { tg, openInvoice } from "./telegram";
+import { t } from "./i18n";
 // Тип импортируем как type-only (стирается при сборке, не тянет SDK в основной бандл).
 // Сами функции свопа грузим динамически (import("./swap")) — отдельным chunk'ом по требованию.
 import type { SwapQuote } from "./swap";
@@ -106,7 +107,7 @@ export default function App() {
       tg?.HapticFeedback?.notificationOccurred("success");
     } catch (e) {
       const er = e as ApiError;
-      if (er.status === 402) setErr("Достигнут лимит кошельков на Free. Оформите Pro 👇");
+      if (er.status === 402) setErr(t("err_limit"));
       else setErr(humanError(er));
     } finally {
       setBusy(false);
@@ -123,7 +124,7 @@ export default function App() {
       tg?.HapticFeedback?.notificationOccurred("success");
     } catch (e) {
       const er = e as ApiError;
-      if (er.status === 402) setErr("Smart-money списки доступны в Pro.");
+      if (er.status === 402) setErr(t("err_sm_pro"));
       else setErr(humanError(er));
     } finally {
       setBusy(false);
@@ -147,7 +148,7 @@ export default function App() {
   async function doSwap() {
     if (!swapTarget || !quote) return;
     if (!tonAddress) {
-      setErr("Подключите TON-кошелёк");
+      setErr(t("err_connect_wallet"));
       return;
     }
     setBusy(true);
@@ -163,7 +164,7 @@ export default function App() {
       setQuote(null);
       tg?.HapticFeedback?.notificationOccurred("success");
     } catch {
-      setErr("Своп отменён или не прошёл.");
+      setErr(t("err_swap_failed"));
     } finally {
       setBusy(false);
     }
@@ -179,7 +180,7 @@ export default function App() {
         await load();
         tg?.HapticFeedback?.notificationOccurred("success");
       } else if (status === "failed") {
-        setErr("Платёж не прошёл. Попробуйте ещё раз.");
+        setErr(t("err_payment_failed"));
       }
     } catch (e) {
       setErr(humanError(e as ApiError));
@@ -216,14 +217,14 @@ export default function App() {
       {swapTarget && (
         <section className="card upsell">
           <div className="row between">
-            <div className="h">Купить {swapTarget.symbol || short(swapTarget.jetton)} на STON.fi</div>
+            <div className="h">{t("swap_title", { sym: swapTarget.symbol || short(swapTarget.jetton) })}</div>
             <button
               className="iconbtn"
               onClick={() => {
                 setSwapTarget(null);
                 setQuote(null);
               }}
-              aria-label="Закрыть"
+              aria-label={t("close")}
             >
               ✕
             </button>
@@ -234,50 +235,50 @@ export default function App() {
               inputMode="decimal"
               value={swapAmount}
               onChange={(e) => setSwapAmount(e.target.value)}
-              placeholder="Сколько TON"
+              placeholder={t("swap_amount_ph")}
             />
             <span className="muted">TON</span>
           </div>
           <div className="muted small">
             {quoting
-              ? "Считаю курс…"
+              ? t("quoting")
               : quote
-                ? `Получишь ≈ ${fmtQty(Number(quote.askUnits) / 10 ** swapTarget.decimals)} ${
-                    swapTarget.symbol || ""
-                  } · импакт ${(Number(quote.priceImpact) * 100).toFixed(2)}%`
-                : "Введите сумму TON"}
+                ? t("swap_receive", {
+                    qty: fmtQty(Number(quote.askUnits) / 10 ** swapTarget.decimals),
+                    sym: swapTarget.symbol || "",
+                    x: (Number(quote.priceImpact) * 100).toFixed(2),
+                  })
+                : t("swap_enter_amount")}
           </div>
           <button className="btn primary" disabled={busy || !quote || !tonAddress} onClick={doSwap}>
-            {tonAddress ? "Обменять через TON Connect" : "Сначала подключите кошелёк"}
+            {tonAddress ? t("swap_btn") : t("swap_btn_noconnect")}
           </button>
         </section>
       )}
 
       <section className="card">
         <div className="row between">
-          <span>Тариф</span>
+          <span>{t("tier")}</span>
           <span className={`badge ${isPro ? "pro" : ""}`}>{me?.tier ?? "…"}</span>
         </div>
-        <div className="muted small">
-          Кошельков: {watches.length} / {limit}
-        </div>
+        <div className="muted small">{t("wallets_count", { n: watches.length, limit })}</div>
         {tonAddress ? (
           <div className="muted small mono">TON: {short(tonAddress)}</div>
         ) : (
-          <div className="muted small">Подключите TON-кошелёк для портфеля и PnL</div>
+          <div className="muted small">{t("connect_short")}</div>
         )}
       </section>
 
       {pf && (
         <section className="card">
           <div className="row between">
-            <div className="h">Портфель</div>
+            <div className="h">{t("portfolio")}</div>
             {pf.connected && <div className="mono">${fmtUsd(pf.totalUsd ?? 0)}</div>}
           </div>
           {pf.connected ? (
             <>
               <div className="muted small">
-                TON: {(pf.ton?.qty ?? 0).toFixed(2)} (${fmtUsd(pf.ton?.usd ?? 0)}) · PnL 30д:{" "}
+                TON: {(pf.ton?.qty ?? 0).toFixed(2)} (${fmtUsd(pf.ton?.usd ?? 0)}) · {t("pnl_label")}:{" "}
                 <span style={{ color: (pf.realizedPnl30d ?? 0) >= 0 ? "#3ddc84" : "#ff6b6b" }}>
                   {(pf.realizedPnl30d ?? 0) >= 0 ? "+" : "−"}${fmtUsd(Math.abs(pf.realizedPnl30d ?? 0))}
                 </span>
@@ -295,37 +296,33 @@ export default function App() {
                         className="iconbtn"
                         disabled={busy}
                         onClick={() => openSwap(h.address, h.symbol, h.decimals)}
-                        title="Купить ещё"
+                        title={t("buy_more")}
                       >
                         ➕
                       </button>
                     </span>
                   </li>
                 ))}
-                {(pf.holdings?.length ?? 0) === 0 && (
-                  <li className="muted small">Нет jetton-холдингов с ценой.</li>
-                )}
+                {(pf.holdings?.length ?? 0) === 0 && <li className="muted small">{t("no_holdings")}</li>}
               </ul>
             </>
           ) : (
-            <div className="muted small">
-              Подключите TON-кошелёк (кнопка вверху справа), чтобы видеть портфель и PnL.
-            </div>
+            <div className="muted small">{t("connect_full")}</div>
           )}
         </section>
       )}
 
       <section className="card">
-        <div className="h">Отслеживаемые кошельки</div>
+        <div className="h">{t("watchlist")}</div>
         <div className="row">
           <input
             className="input"
-            placeholder="TON-адрес (EQ.../UQ...)"
+            placeholder={t("addr_ph")}
             value={addr}
             onChange={(e) => setAddr(e.target.value)}
           />
           <button className="btn" disabled={busy} onClick={addWatch}>
-            Добавить
+            {t("add")}
           </button>
         </div>
         <ul className="list">
@@ -338,33 +335,29 @@ export default function App() {
                 className="iconbtn"
                 disabled={busy}
                 onClick={() => removeWatch(w.id)}
-                aria-label="Удалить из отслеживаемых"
-                title="Удалить"
+                aria-label={t("remove")}
+                title={t("remove")}
               >
                 ✕
               </button>
             </li>
           ))}
-          {watches.length === 0 && (
-            <li className="muted small">Пока пусто — добавьте первый адрес.</li>
-          )}
+          {watches.length === 0 && <li className="muted small">{t("watchlist_empty")}</li>}
         </ul>
       </section>
 
       {sm && (
         <section className="card">
           <div className="row between">
-            <div className="h">💡 Smart-money</div>
+            <div className="h">{t("sm_title")}</div>
             {!sm.locked && (
               <button className="btn" disabled={busy} onClick={toggleFollow}>
-                {sm.following ? "✓ Отслеживается" : "+ Отслеживать"}
+                {sm.following ? t("following") : t("follow")}
               </button>
             )}
           </div>
           {sm.locked ? (
-            <div className="muted small">
-              🔒 {sm.count ?? 0} кошельков «умных денег» — доступно в Pro.
-            </div>
+            <div className="muted small">{t("sm_locked", { n: sm.count ?? 0 })}</div>
           ) : (
             <ul className="list">
               {(sm.members ?? []).slice(0, 15).map((m) => (
@@ -373,35 +366,29 @@ export default function App() {
                   <span className="muted small">score {Math.round(m.score)}</span>
                 </li>
               ))}
-              {(sm.members?.length ?? 0) === 0 && (
-                <li className="muted small">Список формируется автоматически — загляни позже.</li>
-              )}
+              {(sm.members?.length ?? 0) === 0 && <li className="muted small">{t("sm_building")}</li>}
             </ul>
           )}
-          {!sm.locked && sm.following && (
-            <div className="muted small">Алерты по сделкам этих кошельков приходят в бот.</div>
-          )}
+          {!sm.locked && sm.following && <div className="muted small">{t("sm_following_note")}</div>}
         </section>
       )}
 
       {!isPro && (
         <section className="card upsell">
-          <div className="h">TonSonar Pro — 500⭐/мес</div>
+          <div className="h">{t("pro_title")}</div>
           <ul className="bullets">
-            <li>50 кошельков вместо 3</li>
-            <li>Реал-тайм алерты</li>
-            <li>Кураторские smart-money списки</li>
-            <li>Новые jetton-листинги</li>
+            <li>{t("pro_b1")}</li>
+            <li>{t("pro_b2")}</li>
+            <li>{t("pro_b3")}</li>
+            <li>{t("pro_b4")}</li>
           </ul>
           <button className="btn primary" disabled={busy} onClick={buyPro}>
-            ⭐ Оформить Pro
+            {t("pro_btn")}
           </button>
         </section>
       )}
 
-      <footer className="muted small center">
-        Только read-only адреса. Приватные ключи мы никогда не запрашиваем.
-      </footer>
+      <footer className="muted small center">{t("footer")}</footer>
     </div>
   );
 }
@@ -422,6 +409,6 @@ function fmtQty(n: number): string {
 }
 
 function humanError(e: ApiError): string {
-  if (e?.status === 401) return "Откройте приложение из Telegram (нет initData).";
-  return e?.message || "Ошибка";
+  if (e?.status === 401) return t("err_initData");
+  return e?.message || t("err_generic");
 }

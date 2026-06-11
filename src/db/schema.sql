@@ -8,11 +8,13 @@ CREATE TABLE IF NOT EXISTS users (
   charge_id      TEXT,                                   -- telegram_payment_charge_id (для refund/cancel)
   ton_address    TEXT,                                   -- подключённый через TON Connect кошелёк (raw)
   follows_smartmoney BOOLEAN NOT NULL DEFAULT false,     -- подписан на кураторский smart-money список
+  language_code  TEXT,                                   -- язык интерфейса (из Telegram)
   settings       JSONB NOT NULL DEFAULT '{}',
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 -- На случай обновления существующей БД (CREATE TABLE IF NOT EXISTS не добавляет колонки):
 ALTER TABLE users ADD COLUMN IF NOT EXISTS follows_smartmoney BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS language_code TEXT;
 
 CREATE TABLE IF NOT EXISTS wallets (
   id               BIGSERIAL PRIMARY KEY,

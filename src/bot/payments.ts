@@ -1,11 +1,12 @@
 import { Bot } from "grammy";
 import type { Repo } from "../db/repo";
+import { t, pickLang } from "../i18n";
 import { logger } from "../lib/logger";
 
 // Тарифы. amount — это количество ЗВЁЗД (⭐), не центы: для валюты XTR amount = число Stars.
 export const PLANS = {
-  pro: { title: "TonSonar Pro", stars: 500, label: "Pro / месяц" },
-  whale: { title: "TonSonar Whale", stars: 1500, label: "Whale / месяц" },
+  pro: { title: "TonSonar Pro", stars: 500, label: "Pro / month" },
+  whale: { title: "TonSonar Whale", stars: 1500, label: "Whale / month" },
 } as const;
 
 export type PlanId = keyof typeof PLANS;
@@ -32,7 +33,7 @@ export async function createSubscriptionInvoice(
   const p = PLANS[plan];
   return bot.api.createInvoiceLink(
     p.title,
-    `${p.label} — реал-тайм алерты, smart-money списки, новые jetton-листинги`,
+    `${p.label} — real-time alerts, smart-money lists, new jetton listings`,
     JSON.stringify({ plan, uid: userId }), // payload (<= 128 байт)
     "", // provider_token: ПУСТО для Stars
     "XTR", // валюта Telegram Stars
@@ -82,7 +83,8 @@ export function registerPayments(bot: Bot, repo: Repo): void {
       await ctx.answerPreCheckoutQuery(true);
     } catch (e) {
       logger.warn("pre_checkout reject", String(e));
-      await ctx.answerPreCheckoutQuery(false, "Не удалось обработать платёж, попробуйте ещё раз.");
+      const lang = pickLang(ctx.preCheckoutQuery.from?.language_code);
+      await ctx.answerPreCheckoutQuery(false, t(lang, "precheckout_fail"));
     }
   });
 
@@ -97,10 +99,12 @@ export function registerPayments(bot: Bot, repo: Repo): void {
       return;
     }
 
+    const lang = pickLang(ctx.from?.language_code);
+
     // Разовая покупка
     if (payload.sku) {
       // TODO: выдать SKU (например, разблокировать пак списков)
-      await ctx.reply("✅ Покупка завершена, спасибо!");
+      await ctx.reply("✅ Done, thanks!");
       return;
     }
 
@@ -116,10 +120,7 @@ export function registerPayments(bot: Bot, repo: Repo): void {
         amountStars: sp.total_amount,
         period: SUBSCRIPTION_PERIOD,
       });
-      await ctx.reply(
-        `✅ ${PLANS[payload.plan].title} активирован!\n` +
-          `Реал-тайм алерты и smart-money списки включены. Управление — в настройках Mini App.`,
-      );
+      await ctx.reply(t(lang, "pay_success", { plan: PLANS[payload.plan].title }));
     }
   });
 }

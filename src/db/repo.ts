@@ -8,21 +8,23 @@ export interface UserRow {
   pro_expires_at: number | null;
   ton_address: string | null;
   follows_smartmoney: boolean;
+  language_code: string | null;
 }
 
 // Слой доступа к данным. Сознательно тонкий — сырой SQL, без ORM.
 export class Repo {
-  async upsertUser(tgId: number): Promise<void> {
+  async upsertUser(tgId: number, lang?: string | null): Promise<void> {
     await pool.query(
-      `INSERT INTO users (tg_id) VALUES ($1)
-       ON CONFLICT (tg_id) DO NOTHING`,
-      [tgId],
+      `INSERT INTO users (tg_id, language_code) VALUES ($1, $2)
+       ON CONFLICT (tg_id) DO UPDATE
+         SET language_code = COALESCE(EXCLUDED.language_code, users.language_code)`,
+      [tgId, lang ?? null],
     );
   }
 
   async getUser(tgId: number): Promise<UserRow | null> {
     const { rows } = await pool.query<UserRow>(
-      `SELECT tg_id, tier, pro_expires_at, ton_address, follows_smartmoney
+      `SELECT tg_id, tier, pro_expires_at, ton_address, follows_smartmoney, language_code
        FROM users WHERE tg_id = $1`,
       [tgId],
     );
@@ -172,14 +174,14 @@ export class Repo {
   // Получатели алерта по адресу: те, кто следит за ним напрямую (watch),
   // плюс Pro/Whale-подписчики smart-money, если адрес — текущий участник списка.
   async subscribersWatching(raw: string, listName = SMART_LIST_NAME) {
-    const { rows } = await pool.query<{ tg_id: number; tier: string; filters: any }>(
-      `SELECT u.tg_id, u.tier, t.filters
+    const { rows } = await pool.query<{ tg_id: number; tier: string; filters: any; language_code: string | null }>(
+      `SELECT u.tg_id, u.tier, t.filters, u.language_code
          FROM wallets w
          JOIN watches t ON t.wallet_id = w.id
          JOIN users u ON u.tg_id = t.user_id
          WHERE w.address_raw = $1
        UNION
-       SELECT u.tg_id, u.tier, '{}'::jsonb AS filters
+       SELECT u.tg_id, u.tier, '{}'::jsonb AS filters, u.language_code
          FROM users u
          WHERE u.tier IN ('pro','whale') AND u.follows_smartmoney
            AND EXISTS (
@@ -237,11 +239,11 @@ export class Repo {
     }
   }
 
-  async proAndWhaleSubscribers(): Promise<number[]> {
-    const { rows } = await pool.query<{ tg_id: number }>(
-      `SELECT tg_id FROM users WHERE tier IN ('pro', 'whale')`,
+  async proAndWhaleSubscribers(): Promise<{ tg_id: number; language_code: string | null }[]> {
+    const { rows } = await pool.query<{ tg_id: number; language_code: string | null }>(
+      `SELECT tg_id, language_code FROM users WHERE tier IN ('pro', 'whale')`,
     );
-    return rows.map((r) => r.tg_id);
+    return rows;
   }
 
   // --- Jetton safety / smart-money ---

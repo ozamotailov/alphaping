@@ -6,7 +6,7 @@ type InvoiceStatus = "paid" | "cancelled" | "failed" | "pending";
 interface TelegramWebApp {
   initData: string; // подписанная строка для X-Telegram-Init-Data
   initDataUnsafe: {
-    user?: { id: number; username?: string; first_name?: string };
+    user?: { id: number; username?: string; first_name?: string; language_code?: string };
     start_param?: string;
   };
   colorScheme: "light" | "dark";

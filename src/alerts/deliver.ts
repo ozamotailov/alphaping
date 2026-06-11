@@ -4,13 +4,14 @@ import type { AlertJob } from "./queue";
 import { enqueueDelayed } from "./queue";
 import { formatSwap, formatTransfer, formatTon, formatListing } from "./format";
 import { config } from "../config";
+import { t, pickLang, type Lang } from "../i18n";
 import { logger } from "../lib/logger";
 
 const FREE_DELAY_MS = 12 * 60 * 1000; // задержка алертов для free-тарифа
 
 // Кнопка «Купить на STON.fi» → открывает Mini App на свопе этого jetton (deep-link ?swap=).
-function swapKeyboard(jetton: string): InlineKeyboard {
-  return new InlineKeyboard().webApp("🟢 Купить на STON.fi", `${config.WEBAPP_URL}?swap=${jetton}`);
+function swapKeyboard(jetton: string, lang: Lang): InlineKeyboard {
+  return new InlineKeyboard().webApp(t(lang, "buy_button"), `${config.WEBAPP_URL}?swap=${jetton}`);
 }
 
 // Доставка одного задания алерта подписчикам.
@@ -20,20 +21,21 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
   try {
     if (job.kind === "listing") {
       const ids = await repo.proAndWhaleSubscribers(); // новые листинги — только Pro/Whale
-      const text = formatListing((job as any).pool, (job as any).safety);
       const addr = (job as any).safety?.address as string | undefined;
-      const kb = addr ? swapKeyboard(addr) : undefined;
-      for (const id of ids) await safeSend(bot, id, text, kb);
+      for (const id of ids) {
+        const lang = pickLang(id.language_code);
+        const text = formatListing((job as any).pool, (job as any).safety, lang);
+        const kb = addr ? swapKeyboard(addr, lang) : undefined;
+        await safeSend(bot, id.tg_id, text, kb);
+      }
       return;
     }
 
     const subs = await repo.subscribersWatching(job.addr);
-    const text = render(job);
     const delayedPass = Boolean((job as any).__delayed);
     // Для buy-свопа (получен jetton за TON) даём кнопку «купить тот же jetton».
     const buyJetton =
       job.kind === "swap" ? ((job as any).data?.jetton_master_out?.address as string | undefined) : undefined;
-    const kb = buyJetton ? swapKeyboard(buyJetton) : undefined;
 
     const seen = new Set<number>();
     for (const s of subs) {
@@ -41,6 +43,9 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
       seen.add(s.tg_id);
       if (!passesFilters(s.filters, job)) continue;
       const isFree = s.tier === "free";
+      const lang = pickLang(s.language_code); // алерт на языке получателя
+      const text = render(job, lang);
+      const kb = buyJetton ? swapKeyboard(buyJetton, lang) : undefined;
       if (delayedPass) {
         if (isFree) await safeSend(bot, s.tg_id, text, kb); // на отложенном проходе — только free
       } else if (!isFree) {
@@ -57,16 +62,16 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
   }
 }
 
-function render(job: AlertJob): string {
+function render(job: AlertJob, lang: Lang): string {
   switch (job.kind) {
     case "swap":
-      return formatSwap(job.addr, (job as any).data);
+      return formatSwap(job.addr, (job as any).data, lang);
     case "transfer":
-      return formatTransfer(job.addr, (job as any).data);
+      return formatTransfer(job.addr, (job as any).data, lang);
     case "ton":
-      return formatTon(job.addr, (job as any).data);
+      return formatTon(job.addr, (job as any).data, lang);
     default:
-      return "Новое событие";
+      return "";
   }
 }
 
