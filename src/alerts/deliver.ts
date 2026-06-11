@@ -1,11 +1,17 @@
-import type { Bot } from "grammy";
+import { InlineKeyboard, type Bot } from "grammy";
 import type { Repo } from "../db/repo";
 import type { AlertJob } from "./queue";
 import { enqueueDelayed } from "./queue";
 import { formatSwap, formatTransfer, formatTon, formatListing } from "./format";
+import { config } from "../config";
 import { logger } from "../lib/logger";
 
 const FREE_DELAY_MS = 12 * 60 * 1000; // задержка алертов для free-тарифа
+
+// Кнопка «Купить на STON.fi» → открывает Mini App на свопе этого jetton (deep-link ?swap=).
+function swapKeyboard(jetton: string): InlineKeyboard {
+  return new InlineKeyboard().webApp("🟢 Купить на STON.fi", `${config.WEBAPP_URL}?swap=${jetton}`);
+}
 
 // Доставка одного задания алерта подписчикам.
 // Free-юзеры получают тот же алерт с задержкой: на «немедленном» проходе мы рассылаем
@@ -15,13 +21,19 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
     if (job.kind === "listing") {
       const ids = await repo.proAndWhaleSubscribers(); // новые листинги — только Pro/Whale
       const text = formatListing((job as any).pool, (job as any).safety);
-      for (const id of ids) await safeSend(bot, id, text);
+      const addr = (job as any).safety?.address as string | undefined;
+      const kb = addr ? swapKeyboard(addr) : undefined;
+      for (const id of ids) await safeSend(bot, id, text, kb);
       return;
     }
 
     const subs = await repo.subscribersWatching(job.addr);
     const text = render(job);
     const delayedPass = Boolean((job as any).__delayed);
+    // Для buy-свопа (получен jetton за TON) даём кнопку «купить тот же jetton».
+    const buyJetton =
+      job.kind === "swap" ? ((job as any).data?.jetton_master_out?.address as string | undefined) : undefined;
+    const kb = buyJetton ? swapKeyboard(buyJetton) : undefined;
 
     const seen = new Set<number>();
     for (const s of subs) {
@@ -30,9 +42,9 @@ export async function deliverAlert(bot: Bot, repo: Repo, job: AlertJob): Promise
       if (!passesFilters(s.filters, job)) continue;
       const isFree = s.tier === "free";
       if (delayedPass) {
-        if (isFree) await safeSend(bot, s.tg_id, text); // на отложенном проходе — только free
+        if (isFree) await safeSend(bot, s.tg_id, text, kb); // на отложенном проходе — только free
       } else if (!isFree) {
-        await safeSend(bot, s.tg_id, text); // pro/whale — сразу
+        await safeSend(bot, s.tg_id, text, kb); // pro/whale — сразу
       }
     }
 
@@ -70,11 +82,12 @@ function passesFilters(filters: any, job: AlertJob): boolean {
   return true;
 }
 
-async function safeSend(bot: Bot, chatId: number, text: string) {
+async function safeSend(bot: Bot, chatId: number, text: string, keyboard?: InlineKeyboard) {
   try {
     await bot.api.sendMessage(chatId, text, {
       parse_mode: "HTML",
       link_preview_options: { is_disabled: true },
+      reply_markup: keyboard,
     });
   } catch (e) {
     logger.warn("send failed", { chatId, e: String(e) });

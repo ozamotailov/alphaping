@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import { TonConnectButton, useTonAddress } from "@tonconnect/ui-react";
+import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { api } from "./api";
 import { tg, openInvoice } from "./telegram";
+import { quoteTonToJetton, buildTonToJettonTx, type SwapQuote } from "./swap";
 import type { ApiError, Me, Portfolio, SmartMoney, WatchItem } from "./types";
+
+interface SwapTarget {
+  jetton: string;
+  symbol: string;
+  decimals: number;
+}
 
 export default function App() {
   const tonAddress = useTonAddress(); // friendly-адрес или "" если не подключён
+  const [tonConnectUI] = useTonConnectUI();
   const [me, setMe] = useState<Me | null>(null);
   const [watches, setWatches] = useState<WatchItem[]>([]);
   const [sm, setSm] = useState<SmartMoney | null>(null);
@@ -13,6 +21,25 @@ export default function App() {
   const [addr, setAddr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // Своп
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
+  const [swapAmount, setSwapAmount] = useState("1");
+  const [quote, setQuote] = useState<SwapQuote | null>(null);
+  const [quoting, setQuoting] = useState(false);
+
+  const openSwap = useCallback(async (jetton: string, symbol?: string, decimals?: number) => {
+    setQuote(null);
+    setSwapTarget({ jetton, symbol: symbol ?? "", decimals: decimals ?? 9 });
+    if (!symbol) {
+      try {
+        const m = await api.jettonMeta(jetton);
+        setSwapTarget({ jetton, symbol: m.symbol, decimals: m.decimals });
+      } catch {
+        /* оставим адрес как есть */
+      }
+    }
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -39,6 +66,31 @@ export default function App() {
   useEffect(() => {
     if (tonAddress) api.setTonAddress(tonAddress).then(() => load()).catch(() => {});
   }, [tonAddress, load]);
+
+  // Deep-link из алерта бота: ?swap=<jetton> → открыть своп этого токена.
+  useEffect(() => {
+    const j = new URLSearchParams(window.location.search).get("swap");
+    if (j) void openSwap(j);
+  }, [openSwap]);
+
+  // Пересчёт котировки при изменении токена/суммы.
+  useEffect(() => {
+    if (!swapTarget) return;
+    const a = parseFloat(swapAmount);
+    if (!(a > 0)) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    setQuoting(true);
+    quoteTonToJetton(swapTarget.jetton, a)
+      .then((q) => !cancelled && setQuote(q))
+      .catch(() => !cancelled && setQuote(null))
+      .finally(() => !cancelled && setQuoting(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [swapTarget, swapAmount]);
 
   async function addWatch() {
     if (!addr.trim()) return;
@@ -89,6 +141,30 @@ export default function App() {
     }
   }
 
+  async function doSwap() {
+    if (!swapTarget || !quote) return;
+    if (!tonAddress) {
+      setErr("Подключите TON-кошелёк");
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    try {
+      const msg = await buildTonToJettonTx(tonAddress, quote);
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 300,
+        messages: [{ address: msg.address, amount: msg.amount, payload: msg.payload }],
+      });
+      setSwapTarget(null);
+      setQuote(null);
+      tg?.HapticFeedback?.notificationOccurred("success");
+    } catch {
+      setErr("Своп отменён или не прошёл.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function buyPro() {
     setBusy(true);
     setErr(null);
@@ -124,6 +200,46 @@ export default function App() {
         </div>
       )}
 
+      {swapTarget && (
+        <section className="card upsell">
+          <div className="row between">
+            <div className="h">Купить {swapTarget.symbol || short(swapTarget.jetton)} на STON.fi</div>
+            <button
+              className="iconbtn"
+              onClick={() => {
+                setSwapTarget(null);
+                setQuote(null);
+              }}
+              aria-label="Закрыть"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="row">
+            <input
+              className="input"
+              inputMode="decimal"
+              value={swapAmount}
+              onChange={(e) => setSwapAmount(e.target.value)}
+              placeholder="Сколько TON"
+            />
+            <span className="muted">TON</span>
+          </div>
+          <div className="muted small">
+            {quoting
+              ? "Считаю курс…"
+              : quote
+                ? `Получишь ≈ ${fmtQty(Number(quote.askUnits) / 10 ** swapTarget.decimals)} ${
+                    swapTarget.symbol || ""
+                  } · импакт ${(Number(quote.priceImpact) * 100).toFixed(2)}%`
+                : "Введите сумму TON"}
+          </div>
+          <button className="btn primary" disabled={busy || !quote || !tonAddress} onClick={doSwap}>
+            {tonAddress ? "Обменять через TON Connect" : "Сначала подключите кошелёк"}
+          </button>
+        </section>
+      )}
+
       <section className="card">
         <div className="row between">
           <span>Тариф</span>
@@ -155,12 +271,22 @@ export default function App() {
               </div>
               <ul className="list">
                 {(pf.holdings ?? []).slice(0, 8).map((h) => (
-                  <li key={h.symbol + h.usd} className="row between item">
+                  <li key={h.address} className="row between item">
                     <span>
                       {h.verified ? "" : "⚠️ "}
                       {h.symbol}
                     </span>
-                    <span className="muted small">${fmtUsd(h.usd)}</span>
+                    <span className="row" style={{ gap: 10 }}>
+                      <span className="muted small">${fmtUsd(h.usd)}</span>
+                      <button
+                        className="iconbtn"
+                        disabled={busy}
+                        onClick={() => openSwap(h.address, h.symbol, h.decimals)}
+                        title="Купить ещё"
+                      >
+                        ➕
+                      </button>
+                    </span>
                   </li>
                 ))}
                 {(pf.holdings?.length ?? 0) === 0 && (
@@ -274,6 +400,12 @@ function short(a: string): string {
 function fmtUsd(n: number): string {
   if (Math.abs(n) >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
   return n.toFixed(2);
+}
+
+function fmtQty(n: number): string {
+  if (n >= 1000) return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
+  if (n >= 1) return n.toFixed(2);
+  return n.toPrecision(3);
 }
 
 function humanError(e: ApiError): string {

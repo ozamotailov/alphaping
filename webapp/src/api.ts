@@ -49,6 +49,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ address }),
     }),
+  jettonMeta: (address: string) =>
+    req<{ symbol: string; decimals: number; image?: string; verified: boolean }>(
+      `/api/jetton/${address}`,
+    ),
   smartMoney: () =>
     req<{
       locked: boolean;

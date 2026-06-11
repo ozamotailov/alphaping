@@ -8,6 +8,7 @@ import { validateInitData } from "./auth";
 import { createSubscriptionInvoice, PLANS, type PlanId } from "../bot/payments";
 import { SMART_LIST_NAME } from "../constants";
 import { getPortfolio } from "../ingest/portfolio";
+import { getJson } from "../ingest/tonapiClient";
 import { normalizeAddress } from "../lib/ton";
 import { logger } from "../lib/logger";
 
@@ -78,6 +79,24 @@ export function createServer(bot: Bot, repo: Repo) {
     } catch (e) {
       logger.error("portfolio error", String(e));
       res.status(502).json({ error: "portfolio_failed" });
+    }
+  });
+
+  // Метаданные jetton (для UI свопа: символ/десятичные).
+  app.get("/api/jetton/:address", auth, async (req: AuthedRequest, res) => {
+    try {
+      const info = await getJson<{
+        metadata?: { symbol?: string; decimals?: string | number; image?: string };
+        verification?: string;
+      }>(`/jettons/${req.params.address}`);
+      res.json({
+        symbol: info.metadata?.symbol ?? "?",
+        decimals: Number(info.metadata?.decimals ?? 9),
+        image: info.metadata?.image,
+        verified: info.verification === "whitelist",
+      });
+    } catch {
+      res.status(502).json({ error: "jetton_meta_failed" });
     }
   });
 

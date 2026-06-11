@@ -15,8 +15,10 @@ interface JettonBalance {
 }
 
 export interface Holding {
+  address: string;
   symbol: string;
   name: string;
+  decimals: number;
   qty: number;
   usd: number;
   image?: string;
@@ -59,8 +61,10 @@ export async function getPortfolio(address: string, topN = 20): Promise<Portfoli
     const usd = qty * price;
     if (!(usd > 0)) continue; // без цены/ценности — пропускаем (пыль и скам без ликвидности)
     holdings.push({
+      address: b.jetton.address,
       symbol: b.jetton.symbol ?? "?",
       name: b.jetton.name ?? "",
+      decimals: dec,
       qty,
       usd,
       image: b.jetton.image,

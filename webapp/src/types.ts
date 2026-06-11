@@ -20,8 +20,10 @@ export interface SmartMoney {
 }
 
 export interface Holding {
+  address: string;
   symbol: string;
   name: string;
+  decimals: number;
   qty: number;
   usd: number;
   image?: string;
