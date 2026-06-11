@@ -7,6 +7,7 @@ import { rebuildSmartList } from "../ingest/smartmoney";
 import { checkJettonSafety } from "../ingest/safety";
 import { formatListing, formatSwap } from "../alerts/format";
 import { SMART_LIST_NAME } from "../constants";
+import { configureBotProfile } from "./profile";
 import { t, pickLang } from "../i18n";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
@@ -130,6 +131,33 @@ export function registerCommands(bot: Bot, repo: Repo): void {
         })
         .catch(() => {});
     }, sec * 1000);
+  });
+
+  // Что реально хранит Telegram в профиле бота (для диагностики кэша описания).
+  bot.command("profilecheck", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    const cut = (s?: string) => (s && s.length ? s.slice(0, 60) : "(empty)");
+    const [def, ru, sdef, sru, name] = await Promise.all([
+      bot.api.getMyDescription(),
+      bot.api.getMyDescription({ language_code: "ru" }),
+      bot.api.getMyShortDescription(),
+      bot.api.getMyShortDescription({ language_code: "ru" }),
+      bot.api.getMyName(),
+    ]);
+    await ctx.reply(
+      `name: ${cut(name.name)}\n\n` +
+        `desc[default]: ${cut(def.description)}\n\n` +
+        `desc[ru]: ${cut(ru.description)}\n\n` +
+        `short[default]: ${cut(sdef.short_description)}\n` +
+        `short[ru]: ${cut(sru.short_description)}`,
+    );
+  });
+
+  // Переприменить профиль бота на лету (без передеплоя).
+  bot.command("applyprofile", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    await configureBotProfile(bot);
+    await ctx.reply("Profile re-applied. Run /profilecheck to verify.");
   });
 
   // Сервисная команда возврата (только администратор). Использование: /refund <charge_id>

@@ -27,22 +27,28 @@ const CMDS = [
  * Программный полиш профиля бота при старте (идемпотентно): имя, описание, меню команд,
  * Menu Button → Web App. English-only (см. коммент выше). Аватар ставится в @BotFather.
  */
-export async function configureBotProfile(bot: Bot): Promise<void> {
+// Каждый вызов независим: сбой одного (напр. rate-limit) не должен ломать остальные.
+async function safe(label: string, fn: () => Promise<unknown>): Promise<void> {
   try {
-    await bot.api.setMyName("TonSonar");
-    await bot.api.setMyShortDescription(SHORT);
-    await bot.api.setMyDescription(DESC);
-    await bot.api.setMyCommands(CMDS);
-    // Сбрасываем возможную ранее заданную русскую локаль профиля, чтобы ru-юзеры
-    // тоже видели английский дефолт (иначе остался бы прежний RU-вариант).
-    await bot.api.setMyShortDescription("", { language_code: "ru" });
-    await bot.api.setMyDescription("", { language_code: "ru" });
-    await bot.api.setMyCommands(CMDS, { language_code: "ru" });
-    await bot.api.setChatMenuButton({
-      menu_button: { type: "web_app", text: "TonSonar", web_app: { url: config.WEBAPP_URL } },
-    });
-    logger.info("bot profile configured (English-only)");
+    await fn();
   } catch (e) {
-    logger.warn("configureBotProfile failed (возможно rate-limit Telegram): " + String(e));
+    logger.warn(`profile ${label} failed: ${String(e)}`);
   }
+}
+
+export async function configureBotProfile(bot: Bot): Promise<void> {
+  await safe("name", () => bot.api.setMyName("TonSonar"));
+  await safe("short", () => bot.api.setMyShortDescription(SHORT));
+  await safe("desc", () => bot.api.setMyDescription(DESC));
+  await safe("commands", () => bot.api.setMyCommands(CMDS));
+  // Сбрасываем возможный прежний РУССКИЙ вариант профиля (иначе ru-юзеры видят его, а не EN-дефолт).
+  await safe("short-ru-clear", () => bot.api.setMyShortDescription("", { language_code: "ru" }));
+  await safe("desc-ru-clear", () => bot.api.setMyDescription("", { language_code: "ru" }));
+  await safe("commands-ru", () => bot.api.setMyCommands(CMDS, { language_code: "ru" }));
+  await safe("menu", () =>
+    bot.api.setChatMenuButton({
+      menu_button: { type: "web_app", text: "TonSonar", web_app: { url: config.WEBAPP_URL } },
+    }),
+  );
+  logger.info("bot profile configured (English-only, per-call)");
 }
