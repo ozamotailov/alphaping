@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 
 // Тарифы. amount — это количество ЗВЁЗД (⭐), не центы: для валюты XTR amount = число Stars.
 export const PLANS = {
-  pro: { title: "TonSonar Pro", stars: 1, label: "Pro / месяц" },
+  pro: { title: "TonSonar Pro", stars: 500, label: "Pro / месяц" },
   whale: { title: "TonSonar Whale", stars: 1500, label: "Whale / месяц" },
 } as const;
 
