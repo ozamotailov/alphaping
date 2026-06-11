@@ -2,15 +2,45 @@ import { tg } from "./telegram";
 
 type Lang = "en" | "ru";
 
-// Язык: ?lang= override > язык Telegram (ru → ru) > английский по умолчанию.
-function detectLang(): Lang {
+// Приоритет языка: ?lang= в URL (форс, для записи/deep-link) > сохранённый в localStorage
+// (выбор пользователя) > язык Telegram. По умолчанию английский.
+const urlOverride: Lang | null = (() => {
   const q = new URLSearchParams(window.location.search).get("lang");
-  if (q === "en" || q === "ru") return q;
-  const code = tg?.initDataUnsafe?.user?.language_code ?? "en";
-  return code.toLowerCase().startsWith("ru") ? "ru" : "en";
+  return q === "en" || q === "ru" ? q : null;
+})();
+
+function fromCode(code?: string | null): Lang {
+  return code && code.toLowerCase().startsWith("ru") ? "ru" : "en";
 }
 
-export const lang: Lang = detectLang();
+function storedLang(): Lang | null {
+  try {
+    const v = localStorage.getItem("ts_lang");
+    return v === "en" || v === "ru" ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+let currentLang: Lang = urlOverride ?? storedLang() ?? fromCode(tg?.initDataUnsafe?.user?.language_code);
+
+/**
+ * Применить предпочтение языка (например, серверное из /api/me или выбор /lang).
+ * URL-форс имеет приоритет и не перебивается. Возвращает true, если язык изменился
+ * (тогда вызывающий должен перерендерить UI).
+ */
+export function setLang(code?: string | null): boolean {
+  if (urlOverride || !code) return false;
+  const next = fromCode(code);
+  if (next === currentLang) return false;
+  currentLang = next;
+  try {
+    localStorage.setItem("ts_lang", next);
+  } catch {
+    /* ignore */
+  }
+  return true;
+}
 
 const en = {
   err_initData: "Open the app from Telegram (no initData).",
@@ -105,7 +135,7 @@ const ru: Record<Key, string> = {
 const dict: Record<Lang, Record<Key, string>> = { en, ru };
 
 export function t(key: Key, vars?: Record<string, string | number>): string {
-  let s: string = dict[lang][key] ?? en[key] ?? key;
+  let s: string = dict[currentLang][key] ?? en[key] ?? key;
   if (vars) for (const k of Object.keys(vars)) s = s.split(`{${k}}`).join(String(vars[k]));
   return s;
 }

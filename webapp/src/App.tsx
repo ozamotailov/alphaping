@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { api } from "./api";
 import { tg, openInvoice } from "./telegram";
-import { t } from "./i18n";
+import { t, setLang } from "./i18n";
 // Тип импортируем как type-only (стирается при сборке, не тянет SDK в основной бандл).
 // Сами функции свопа грузим динамически (import("./swap")) — отдельным chunk'ом по требованию.
 import type { SwapQuote } from "./swap";
@@ -24,6 +24,7 @@ export default function App() {
   const [addr, setAddr] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [, rerender] = useReducer((x: number) => x + 1, 0); // форс ре-рендера при смене языка
 
   // Своп
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
@@ -56,6 +57,8 @@ export default function App() {
       setWatches(w);
       setSm(s);
       setPf(p);
+      // Уважаем выбранный язык (серверное предпочтение, в т.ч. из /lang en) — перебивает Telegram-детект.
+      if (setLang(m.language_code)) rerender();
     } catch (e) {
       setErr(humanError(e as ApiError));
     }

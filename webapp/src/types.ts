@@ -3,6 +3,7 @@ export interface Me {
   tier: string; // free | pro | whale
   pro_expires_at?: number | null;
   ton_address?: string | null;
+  language_code?: string | null;
 }
 
 export interface WatchItem {
