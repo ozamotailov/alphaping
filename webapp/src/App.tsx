@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 import { TonConnectButton, useTonAddress, useTonConnectUI } from "@tonconnect/ui-react";
 import { api } from "./api";
 import { tg, openInvoice } from "./telegram";
-import { quoteTonToJetton, buildTonToJettonTx, type SwapQuote } from "./swap";
+// Тип импортируем как type-only (стирается при сборке, не тянет SDK в основной бандл).
+// Сами функции свопа грузим динамически (import("./swap")) — отдельным chunk'ом по требованию.
+import type { SwapQuote } from "./swap";
 import type { ApiError, Me, Portfolio, SmartMoney, WatchItem } from "./types";
 
 interface SwapTarget {
@@ -83,7 +85,8 @@ export default function App() {
     }
     let cancelled = false;
     setQuoting(true);
-    quoteTonToJetton(swapTarget.jetton, a)
+    import("./swap")
+      .then(({ quoteTonToJetton }) => quoteTonToJetton(swapTarget.jetton, a))
       .then((q) => !cancelled && setQuote(q))
       .catch(() => !cancelled && setQuote(null))
       .finally(() => !cancelled && setQuoting(false));
@@ -150,6 +153,7 @@ export default function App() {
     setBusy(true);
     setErr(null);
     try {
+      const { buildTonToJettonTx } = await import("./swap");
       const msg = await buildTonToJettonTx(tonAddress, quote);
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
