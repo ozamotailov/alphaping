@@ -1,5 +1,6 @@
 import { config } from "./config";
 import { Repo } from "./db/repo";
+import { applySchema } from "./db/migrate";
 import { buildBot } from "./bot/bot";
 import { createServer } from "./api/server";
 import { startAlertWorker } from "./alerts/queue";
@@ -12,9 +13,27 @@ import { rebuildSmartList } from "./ingest/smartmoney";
 import { SMART_LIST_NAME } from "./constants";
 import { logger } from "./lib/logger";
 
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 10, delayMs = 3000): Promise<T> {
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i === tries - 1) throw e;
+      logger.warn(`${label} retry ${i + 1}/${tries}: ${String(e)}`);
+      await sleep(delayMs);
+    }
+  }
+  throw new Error("unreachable");
+}
+
 async function main() {
   const repo = new Repo();
   const bot = buildBot(repo);
+
+  // 0) Применяем схему БД (идемпотентно), с ретраями — БД может подниматься дольше контейнера.
+  await withRetry("applySchema", applySchema);
 
   // 1) HTTP API для Mini App (инвойсы, watchlist, портфель)
   const app = createServer(bot, repo);
