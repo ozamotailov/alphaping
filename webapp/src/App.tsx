@@ -194,7 +194,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="row between">
-        <div className="brand">🛰️ TonSonar</div>
+        <div className="brand">
+          <img
+            src="/logo.svg"
+            alt=""
+            width={24}
+            height={24}
+            style={{ verticalAlign: "-5px", borderRadius: 6, marginRight: 4 }}
+          />
+          TonSonar
+        </div>
         <TonConnectButton />
       </header>
 
