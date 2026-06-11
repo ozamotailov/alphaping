@@ -10,27 +10,44 @@ import { SMART_LIST_NAME } from "../constants";
 import { t, pickLang } from "../i18n";
 
 export function registerCommands(bot: Bot, repo: Repo): void {
+  // Язык юзера: явный выбор (/lang, хранится в БД) > детект Telegram. По умолчанию EN.
+  const resolveLang = async (tgId: number, fallback?: string) =>
+    pickLang((await repo.getUser(tgId))?.language_code ?? fallback);
+
   bot.command("start", async (ctx) => {
-    const lang = pickLang(ctx.from?.language_code);
     await repo.upsertUser(ctx.from!.id, ctx.from?.language_code);
+    const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
     const kb = new InlineKeyboard().webApp(t(lang, "open_app"), config.WEBAPP_URL);
     await ctx.reply(t(lang, "start"), { parse_mode: "HTML", reply_markup: kb });
   });
 
+  // Ручной выбор языка: /lang en  ·  /lang ru
+  bot.command("lang", async (ctx) => {
+    const arg = (ctx.match || "").trim().toLowerCase();
+    const choice = arg.startsWith("ru") ? "ru" : arg.startsWith("en") ? "en" : null;
+    if (!choice) {
+      await ctx.reply("Usage: /lang en  ·  /lang ru");
+      return;
+    }
+    await repo.upsertUser(ctx.from!.id);
+    await repo.setLanguage(ctx.from!.id, choice);
+    await ctx.reply(choice === "en" ? "✅ Language set to English." : "✅ Язык переключён на русский.");
+  });
+
   bot.command("pro", async (ctx) => {
-    const lang = pickLang(ctx.from?.language_code);
+    const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
     const kb = new InlineKeyboard().webApp(t(lang, "get_pro"), `${config.WEBAPP_URL}?upsell=pro`);
     await ctx.reply(t(lang, "pro_pitch"), { parse_mode: "HTML", reply_markup: kb });
   });
 
   bot.command("status", async (ctx) => {
-    const lang = pickLang(ctx.from?.language_code);
+    const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
     const u = await repo.getUser(ctx.from!.id);
     await ctx.reply(t(lang, "status", { tier: u?.tier ?? "free" }), { parse_mode: "HTML" });
   });
 
   bot.command("help", async (ctx) => {
-    const lang = pickLang(ctx.from?.language_code);
+    const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
     await ctx.reply(t(lang, "help"), { parse_mode: "HTML" });
   });
 

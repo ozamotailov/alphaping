@@ -14,12 +14,19 @@ export interface UserRow {
 // Слой доступа к данным. Сознательно тонкий — сырой SQL, без ORM.
 export class Repo {
   async upsertUser(tgId: number, lang?: string | null): Promise<void> {
+    // Сохраняем существующий язык (в т.ч. явно выбранный через /lang); из Telegram берём
+    // только если ещё не задан — чтобы /start не затирал ручной выбор.
     await pool.query(
       `INSERT INTO users (tg_id, language_code) VALUES ($1, $2)
        ON CONFLICT (tg_id) DO UPDATE
-         SET language_code = COALESCE(EXCLUDED.language_code, users.language_code)`,
+         SET language_code = COALESCE(users.language_code, EXCLUDED.language_code)`,
       [tgId, lang ?? null],
     );
+  }
+
+  // Явный выбор языка пользователем (/lang) — перекрывает детект Telegram.
+  async setLanguage(tgId: number, lang: string): Promise<void> {
+    await pool.query(`UPDATE users SET language_code = $2 WHERE tg_id = $1`, [tgId, lang]);
   }
 
   async getUser(tgId: number): Promise<UserRow | null> {
