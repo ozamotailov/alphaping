@@ -1,4 +1,4 @@
-# 🛰️ AlphaPing — TON-first smart-money & wallet alerts
+# 🛰️ TonSonar — TON-first smart-money & wallet alerts
 
 Telegram Mini App + бот: алерты по TON-кошелькам и smart-money, портфель/PnL,
 новые jetton-листинги. Монетизация — Telegram Stars (подписка) с выводом в TON.
