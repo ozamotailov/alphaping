@@ -20,6 +20,7 @@ const en = {
   // команды
   open_app: "🛰️ Open TonSonar",
   get_pro: "⭐ Get Pro",
+  channel_btn: "📣 Channel",
   start: "Hi! <b>TonSonar</b> tracks TON wallets and smart money right in Telegram.\n\n• Portfolio & PnL for your wallet\n• Real-time trade alerts for tracked wallets\n• New jetton listings on STON.fi\n\nOpen the app and add your first wallet 👇",
   pro_pitch: "<b>TonSonar Pro</b> — 500⭐/mo:\n50 wallets · real-time · curated smart-money lists · no ads.",
   status: "Plan: <b>{tier}</b>",
@@ -46,6 +47,7 @@ const ru: Record<Key, string> = {
   buy_button: "🟢 Купить на STON.fi",
   open_app: "🛰️ Открыть TonSonar",
   get_pro: "⭐ Оформить Pro",
+  channel_btn: "📣 Канал",
   start: "Привет! <b>TonSonar</b> следит за TON-кошельками и «умными деньгами» прямо в Telegram.\n\n• Портфель и PnL по твоему кошельку\n• Реал-тайм алерты сделок отслеживаемых кошельков\n• Новые jetton-листинги на STON.fi\n\nОткрой приложение и добавь первый кошелёк 👇",
   pro_pitch: "<b>TonSonar Pro</b> — 500⭐/мес:\n50 кошельков · реал-тайм · кураторские smart-money списки · без рекламы.",
   status: "Тариф: <b>{tier}</b>",

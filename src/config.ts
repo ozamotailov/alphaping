@@ -11,6 +11,8 @@ const schema = z.object({
   PORT: z.coerce.number().default(3000),
   PUBLIC_API_URL: z.string().url().optional(),
   ADMIN_ID: z.coerce.number().default(0),
+  // Публичный Telegram-канал (полный URL https://t.me/...). Если задан — в /start появится кнопка.
+  CHANNEL_URL: z.string().optional(),
   // Листинги: минимальная ликвидность пула для алерта и анти-флуд лимит новых за цикл.
   MIN_LIQUIDITY_USD: z.coerce.number().default(1000),
   MAX_NEW_PER_CYCLE: z.coerce.number().default(30),

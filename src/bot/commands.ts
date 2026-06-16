@@ -19,6 +19,7 @@ export function registerCommands(bot: Bot, repo: Repo): void {
     await repo.upsertUser(ctx.from!.id, ctx.from?.language_code);
     const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
     const kb = new InlineKeyboard().webApp(t(lang, "open_app"), config.WEBAPP_URL);
+    if (config.CHANNEL_URL?.startsWith("http")) kb.row().url(t(lang, "channel_btn"), config.CHANNEL_URL);
     await ctx.reply(t(lang, "start"), { parse_mode: "HTML", reply_markup: kb });
   });
 
