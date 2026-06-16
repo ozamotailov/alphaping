@@ -28,7 +28,7 @@ Why TonSonar:
 Telegram Mini App + bot. Open source.
 
 🔗 Mini App: <вставь ссылку на Mini App>
-🤖 Bot: https://t.me/<your_bot>
+🤖 Bot: https://t.me/tonsonar_bot
 💻 Code: https://github.com/ozamotailov/alphaping
 
 Stack: TypeScript · grammY · TON Connect · @ston-fi/sdk · React · Telegram Stars.

@@ -42,8 +42,8 @@ AI pipelines) — built the live MVP end-to-end.
 
 **Links.**
 - Mini App: https://alphaping-production.up.railway.app
-- Bot: https://t.me/<your_bot>
+- Bot: https://t.me/tonsonar_bot
 - Repo: https://github.com/ozamotailov/alphaping
-- Demo video: <вставь ссылку>
+- Demo video: https://youtu.be/RHRY2dgy8A8?is=8rePt7aR8aQzWz3q
 
 **Stack.** TypeScript · grammY · Express · BullMQ · Postgres · React/Vite · TON Connect · `@ston-fi/sdk`.

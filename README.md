@@ -3,9 +3,10 @@
 Telegram Mini App + бот: алерты по TON-кошелькам и smart-money, портфель/PnL,
 новые jetton-листинги. Монетизация — Telegram Stars (подписка) с выводом в TON.
 
-> Это **бэкенд-каркас** (бот + API + ingest). Полностью реализован платёжный цикл Stars;
-> TON-ingest и движок алертов даны рабочими, но требуют доводки под боевые данные.
-> Фронтенд Mini App — отдельный проект, см. [`webapp/`](webapp/README.md).
+**▶ [Demo video](https://youtu.be/RHRY2dgy8A8?is=8rePt7aR8aQzWz3q) · 📄 [One-pager](ONEPAGER.md) · 🤖 [Try the bot](https://t.me/tonsonar_bot) · 🛰️ [Live Mini App](https://alphaping-production.up.railway.app) · 📨 [Grant proposal](GRANT.md)**
+
+Live, deployed 24/7 · open-source · bilingual EN/RU · read-only (never asks for private keys).
+Frontend Mini App: [`webapp/`](webapp/README.md).
 
 ## Что внутри
 
