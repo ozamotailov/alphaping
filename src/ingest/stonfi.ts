@@ -55,9 +55,25 @@ export async function seedListingBaselineIfEmpty(repo: Repo): Promise<void> {
   }
 }
 
+const toSeen = (p: StonPool) => ({
+  address: p.address,
+  dex: "stonfi",
+  token0: p.token0_address,
+  token1: p.token1_address,
+});
+
+// «Решить» пул: перенести в pools_seen (больше не оцениваем) и убрать из pending.
+async function resolvePool(repo: Repo, p: StonPool): Promise<void> {
+  await repo.markPoolSeen(toSeen(p));
+  await repo.removePendingPool(p.address);
+}
+
 /**
- * Детект новых jetton-листингов: diff пулов STON.fi относительно pools_seen.
- * Новый пул → safety-проверка → алерт ТОЛЬКО при risk != high.
+ * Детект новых jetton-листингов с ОКНОМ ПЕРЕОЦЕНКИ.
+ * Новый пул не списывается сразу: если ликвидности пока мало, держим его в pools_pending
+ * и переоцениваем каждый цикл — алертим, когда он перерастает порог (это и есть «свежий
+ * токен набирает обороты»). Пул «решается» (→ pools_seen) когда: заалертили, оказался
+ * high-risk, не-листинг (пара котировочных), или истекло окно LISTING_WINDOW_HOURS.
  */
 export async function pollNewPools(repo: Repo): Promise<void> {
   let pools: StonPool[];
@@ -68,49 +84,61 @@ export async function pollNewPools(repo: Repo): Promise<void> {
     return;
   }
 
-  // Один запрос вместо 45k: множество уже виденных пулов держим в памяти.
-  const seen = new Set(await repo.allSeenPoolAddresses());
-  const fresh = pools.filter((p) => p.address && !seen.has(p.address));
-  if (fresh.length === 0) return;
+  const resolved = new Set(await repo.allSeenPoolAddresses());
+  const pending = new Map((await repo.getPendingPools()).map((r) => [r.address, r.first_seen]));
 
-  const toSeen = (p: StonPool) => ({
-    address: p.address,
-    dex: "stonfi",
-    token0: p.token0_address,
-    token1: p.token1_address,
-  });
+  // Кандидаты на оценку = всё, что ещё не «решено». Включает и pending, и впервые увиденные.
+  const candidates = pools.filter((p) => p.address && !resolved.has(p.address));
+  if (candidates.length === 0) return;
 
-  // Анти-флуд: слишком много «новых» за цикл = аномалия/пропущенный базлайн
-  // (напр. пустой pools_seen). Помечаем seen БЕЗ алертов, чтобы не залить пользователей.
-  if (fresh.length > config.MAX_NEW_PER_CYCLE) {
-    await repo.markPoolsSeenBulk(fresh.map(toSeen));
+  // Анти-флуд: аномально много ВПЕРВЫЕ увиденных за цикл = пропущенный базлайн
+  // (напр. пустой pools_seen). Списываем их seen без алертов; pending не трогаем.
+  const firstTime = candidates.filter((p) => !pending.has(p.address));
+  if (firstTime.length > config.MAX_NEW_PER_CYCLE) {
+    await repo.markPoolsSeenBulk(firstTime.map(toSeen));
     logger.warn(
-      `listing: ${fresh.length} новых пулов за цикл (> ${config.MAX_NEW_PER_CYCLE}) — аномалия/базлайн, помечаю seen без алертов`,
+      `listing: ${firstTime.length} впервые увиденных пулов за цикл (> ${config.MAX_NEW_PER_CYCLE}) — аномалия/базлайн, помечаю seen без алертов`,
     );
     return;
   }
 
-  for (const p of fresh) {
-    await repo.markPoolSeen(toSeen(p));
+  const now = Date.now();
+  const windowMs = config.LISTING_WINDOW_HOURS * 3600_000;
 
-    // Фильтр мусора: низкая ликвидность пула (берём прямо из данных STON.fi, без tonapi).
-    const liq = Number(p.lp_total_supply_usd ?? 0);
-    if (!(liq >= config.MIN_LIQUIDITY_USD)) {
-      logger.info(`listing skipped (low liq ~$${liq.toFixed(0)} < $${config.MIN_LIQUIDITY_USD}): ${p.address}`);
-      continue;
-    }
-
+  for (const p of candidates) {
     const jetton = pickNewJetton(p);
-    if (!jetton) continue; // обе стороны котировочные (напр. USDT/TON) — не новый листинг
-
-    const safety = await checkJettonSafety(jetton, p);
-    await repo.setJettonSafety(jetton, safety.symbol, safety);
-
-    if (safety.risk === "high") {
-      logger.info(`listing skipped (high risk): ${safety.symbol ?? jetton} — ${safety.reasons.join("; ")}`);
+    if (!jetton) {
+      await resolvePool(repo, p); // обе стороны котировочные (USDT/TON) — не листинг
       continue;
     }
-    await alertQueue.add("listing", { kind: "listing", pool: { ...p, dex: "STON.fi" }, safety });
+
+    // Ликвидность берём прямо из данных STON.fi (без tonapi).
+    const liq = Number(p.lp_total_supply_usd ?? 0);
+    if (liq >= config.MIN_LIQUIDITY_USD) {
+      const safety = await checkJettonSafety(jetton, p);
+      await repo.setJettonSafety(jetton, safety.symbol, safety);
+      if (safety.risk === "high") {
+        logger.info(`listing skipped (high risk): ${safety.symbol ?? jetton} — ${safety.reasons.join("; ")}`);
+      } else {
+        await alertQueue.add("listing", { kind: "listing", pool: { ...p, dex: "STON.fi" }, safety });
+      }
+      await resolvePool(repo, p); // заалертили или high-risk — больше не ждём
+      continue;
+    }
+
+    // Ликвидности пока мало: держим под наблюдением в пределах окна.
+    const firstSeen = pending.get(p.address) ?? now;
+    if (now - firstSeen > windowMs) {
+      await resolvePool(repo, p); // не дорос за окно — перестаём ждать
+    } else if (!pending.has(p.address)) {
+      await repo.upsertPendingPool({
+        address: p.address,
+        dex: "stonfi",
+        token0: p.token0_address,
+        token1: p.token1_address,
+        firstSeen: now,
+      });
+    }
   }
 }
 

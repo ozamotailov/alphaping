@@ -225,6 +225,32 @@ export class Repo {
     return rows.map((r) => r.address);
   }
 
+  // --- Pending pools (окно переоценки листингов) ---
+  async getPendingPools(): Promise<{ address: string; first_seen: number }[]> {
+    const { rows } = await pool.query<{ address: string; first_seen: string }>(
+      `SELECT address, first_seen FROM pools_pending`,
+    );
+    return rows.map((r) => ({ address: r.address, first_seen: Number(r.first_seen) }));
+  }
+
+  async upsertPendingPool(p: {
+    address: string;
+    dex: string;
+    token0?: string;
+    token1?: string;
+    firstSeen: number;
+  }): Promise<void> {
+    await pool.query(
+      `INSERT INTO pools_pending (address, dex, token0, token1, first_seen)
+       VALUES ($1, $2, $3, $4, $5) ON CONFLICT (address) DO NOTHING`,
+      [p.address, p.dex, p.token0 ?? null, p.token1 ?? null, p.firstSeen],
+    );
+  }
+
+  async removePendingPool(address: string): Promise<void> {
+    await pool.query(`DELETE FROM pools_pending WHERE address = $1`, [address]);
+  }
+
   // Массовая засевка базлайна пулов (чанками, чтобы не упереться в лимит параметров).
   async markPoolsSeenBulk(
     items: { address: string; dex: string; token0?: string; token1?: string }[],

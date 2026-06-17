@@ -1,5 +1,6 @@
 import { alertQueue } from "../alerts/queue";
 import type { Repo } from "../db/repo";
+import { config } from "../config";
 import { logger } from "../lib/logger";
 import { getAccountEvents, type TonApiAction, type TonApiEvent } from "./tonapiClient";
 
@@ -40,9 +41,13 @@ async function dispatch(addr: string, ev: TonApiEvent, a: TonApiAction): Promise
     case "JettonTransfer":
       await alertQueue.add("event", { kind: "transfer", addr, tx: ev.event_id, data: a.JettonTransfer });
       break;
-    case "TonTransfer":
+    case "TonTransfer": {
+      // Режем dust/служебные «0 TON» (спам при follow smart-money): не ставим в очередь.
+      const amountTon = Number(a.TonTransfer?.amount ?? 0) / 1e9;
+      if (amountTon < config.MIN_TON_TRANSFER) break;
       await alertQueue.add("event", { kind: "ton", addr, tx: ev.event_id, data: a.TonTransfer });
       break;
+    }
   }
 }
 

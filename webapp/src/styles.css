@@ -76,6 +76,36 @@ body {
 .mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+.copyable {
+  cursor: pointer;
+}
+.copyable:active {
+  opacity: 0.6;
+}
+.copyic {
+  opacity: 0.4;
+  font-size: 12px;
+}
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: #0b1220;
+  color: #fff;
+  padding: 9px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  z-index: 50;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  animation: toastin 0.15s ease-out;
+}
+@keyframes toastin {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
 .input {
   flex: 1;
   padding: 10px 12px;

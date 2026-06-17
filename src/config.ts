@@ -21,6 +21,12 @@ const schema = z.object({
   // Листинги: минимальная ликвидность пула для алерта и анти-флуд лимит новых за цикл.
   MIN_LIQUIDITY_USD: z.coerce.number().default(1000),
   MAX_NEW_PER_CYCLE: z.coerce.number().default(30),
+  // Окно переоценки нового пула (часы): держим под наблюдением и алертим, когда он
+  // перерастает порог ликвидности; по истечении окна перестаём ждать.
+  LISTING_WINDOW_HOURS: z.coerce.number().default(48),
+  // Не слать TON-переводы (kind=ton) меньше этого размера (TON) — режет спам «0 TON»
+  // при follow smart-money (служебные/dust-сообщения).
+  MIN_TON_TRANSFER: z.coerce.number().default(1),
 });
 
 export const config = schema.parse(process.env);

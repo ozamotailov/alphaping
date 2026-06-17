@@ -25,6 +25,21 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [, rerender] = useReducer((x: number) => x + 1, 0); // форс ре-рендера при смене языка
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Копирование адреса в буфер по клику (smart-money / watchlist).
+  const copyAddr = useCallback(async (full: string) => {
+    const ok = await copyText(full);
+    setToast(ok ? t("copied") : t("copy_failed"));
+    try {
+      (tg as unknown as { HapticFeedback?: { notificationOccurred?: (t: string) => void } })?.HapticFeedback?.notificationOccurred?.(
+        ok ? "success" : "error",
+      );
+    } catch {
+      /* haptic не обязателен */
+    }
+    setTimeout(() => setToast(null), 1500);
+  }, []);
 
   // Своп
   const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
@@ -331,8 +346,12 @@ export default function App() {
         <ul className="list">
           {watches.map((w) => (
             <li key={w.id} className="row between item">
-              <span className="mono">
-                {short(w.address_friendly)} {w.is_smartmoney ? "⭐" : ""}
+              <span
+                className="mono copyable"
+                title={w.address_friendly}
+                onClick={() => copyAddr(w.address_friendly)}
+              >
+                {short(w.address_friendly)} {w.is_smartmoney ? "⭐" : ""} <span className="copyic">⧉</span>
               </span>
               <button
                 className="iconbtn"
@@ -365,7 +384,13 @@ export default function App() {
             <ul className="list">
               {(sm.members ?? []).slice(0, 15).map((m) => (
                 <li key={m.address_friendly} className="row between item">
-                  <span className="mono">{short(m.address_friendly)}</span>
+                  <span
+                    className="mono copyable"
+                    title={m.address_friendly}
+                    onClick={() => copyAddr(m.address_friendly)}
+                  >
+                    {short(m.address_friendly)} <span className="copyic">⧉</span>
+                  </span>
                   <span className="muted small">score {Math.round(m.score)}</span>
                 </li>
               ))}
@@ -392,8 +417,31 @@ export default function App() {
       )}
 
       <footer className="muted small center">{t("footer")}</footer>
+      {toast && <div className="toast">{toast}</div>}
     </div>
   );
+}
+
+// Копирование в буфер: clipboard API + фолбэк через textarea (старые Telegram-webview).
+async function copyText(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
 }
 
 function short(a: string): string {

@@ -63,6 +63,16 @@ CREATE TABLE IF NOT EXISTS pools_seen (
   first_seen TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Пулы под наблюдением: новый листинг с пока недостаточной ликвидностью. Переоцениваем
+-- каждый цикл и алертим, когда перерастает порог; по истечении окна → переносим в pools_seen.
+CREATE TABLE IF NOT EXISTS pools_pending (
+  address    TEXT PRIMARY KEY,
+  dex        TEXT NOT NULL,
+  token0     TEXT,
+  token1     TEXT,
+  first_seen BIGINT NOT NULL                            -- unix ms первого появления
+);
+
 CREATE TABLE IF NOT EXISTS events (
   id        BIGSERIAL PRIMARY KEY,
   wallet_id BIGINT REFERENCES wallets(id) ON DELETE CASCADE,
