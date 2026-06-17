@@ -6,6 +6,7 @@ import { discoverCandidates } from "../ingest/discovery";
 import { rebuildSmartList } from "../ingest/smartmoney";
 import { checkJettonSafety } from "../ingest/safety";
 import { formatListing, formatSwap } from "../alerts/format";
+import { postSampleToChannel } from "../alerts/channel";
 import { SMART_LIST_NAME } from "../constants";
 import { configureBotProfile } from "./profile";
 import { t, pickLang } from "../i18n";
@@ -18,6 +19,16 @@ export function registerCommands(bot: Bot, repo: Repo): void {
   bot.command("start", async (ctx) => {
     await repo.upsertUser(ctx.from!.id, ctx.from?.language_code);
     const lang = await resolveLang(ctx.from!.id, ctx.from?.language_code);
+    // Deep-link из канала: /start swap_<jetton> → сразу webApp-кнопка на своп этого jetton
+    // (в личке webApp работает, в отличие от канала). Замыкает «тизер в канале → своп».
+    const payload = (ctx.match || "").toString().trim();
+    if (payload.startsWith("swap_")) {
+      const jetton = payload.slice("swap_".length);
+      const kb = new InlineKeyboard().webApp(t(lang, "buy_button"), `${config.WEBAPP_URL}?swap=${jetton}`);
+      if (config.CHANNEL_URL?.startsWith("http")) kb.row().url(t(lang, "channel_btn"), config.CHANNEL_URL);
+      await ctx.reply(t(lang, "start"), { parse_mode: "HTML", reply_markup: kb });
+      return;
+    }
     const kb = new InlineKeyboard().webApp(t(lang, "open_app"), config.WEBAPP_URL);
     if (config.CHANNEL_URL?.startsWith("http")) kb.row().url(t(lang, "channel_btn"), config.CHANNEL_URL);
     await ctx.reply(t(lang, "start"), { parse_mode: "HTML", reply_markup: kb });
@@ -63,6 +74,26 @@ export function registerCommands(bot: Bot, repo: Repo): void {
       await ctx.reply(`Готово: кандидатов ${candidates.length}, в списке ${top.length}.`);
     } catch (e) {
       await ctx.reply("Ошибка: " + String(e));
+    }
+  });
+
+  // Тест постинга в публичный канал (только администратор): шлёт образец smart-money
+  // тизера в CHANNEL_CHAT_ID. Проверка прав бота и вёрстки без ожидания живого сигнала.
+  bot.command("testchannel", async (ctx) => {
+    if (ctx.from!.id !== config.ADMIN_ID) return;
+    if (!config.CHANNEL_CHAT_ID) {
+      await ctx.reply("CHANNEL_CHAT_ID не задан — авто-постинг в канал выключен.");
+      return;
+    }
+    try {
+      await postSampleToChannel(bot);
+      await ctx.reply(`✅ Тестовый пост отправлен в ${config.CHANNEL_CHAT_ID}.`);
+    } catch (e) {
+      await ctx.reply(
+        "❌ Не удалось запостить в канал: " +
+          String(e) +
+          "\n\nПроверь: бот добавлен в канал АДМИНОМ с правом постинга, и CHANNEL_CHAT_ID верный (@username или числовой id).",
+      );
     }
   });
 

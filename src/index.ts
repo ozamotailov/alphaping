@@ -6,6 +6,7 @@ import { configureBotProfile } from "./bot/profile";
 import { createServer } from "./api/server";
 import { startAlertWorker } from "./alerts/queue";
 import { deliverAlert } from "./alerts/deliver";
+import { postToChannel } from "./alerts/channel";
 import { startPolling } from "./ingest/tonapi";
 import { startAccountStream } from "./ingest/tonapiStream";
 import { startListingPolling, seedListingBaselineIfEmpty } from "./ingest/stonfi";
@@ -40,8 +41,12 @@ async function main() {
   const app = createServer(bot, repo);
   app.listen(config.PORT, () => logger.info(`API listening on :${config.PORT}`));
 
-  // 2) Воркер доставки алертов (BullMQ)
-  startAlertWorker((job) => deliverAlert(bot, repo, job.data));
+  // 2) Воркер доставки алертов (BullMQ): подписчикам + тизер в публичный канал.
+  //    postToChannel сам отсекает отложенный (free) проход и гасит свои ошибки.
+  startAlertWorker(async (job) => {
+    await deliverAlert(bot, repo, job.data);
+    await postToChannel(bot, repo, job.data);
+  });
 
   // 3) Ingest: реал-тайм SSE (Pro/Whale) + бэкфилл-поллер + новые листинги STON.fi
   startAccountStream(repo); // tonapi SSE → мгновенные алерты по pro-адресам

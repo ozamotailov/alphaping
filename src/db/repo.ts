@@ -311,6 +311,20 @@ export class Repo {
     }
   }
 
+  // Является ли адрес ТЕКУЩИМ участником курируемого smart-money списка.
+  // Приватность-гейт публичного канала: постим только курир. smart-money,
+  // НЕ watched-кошельки конкретных юзеров.
+  async isSmartMoneyMember(raw: string, listName = SMART_LIST_NAME): Promise<boolean> {
+    const { rowCount } = await pool.query(
+      `SELECT 1 FROM wallets w
+         JOIN smart_list_members m ON m.wallet_id = w.id
+         JOIN smart_lists l ON l.id = m.list_id AND l.name = $2
+       WHERE w.address_raw = $1 LIMIT 1`,
+      [raw, listName],
+    );
+    return (rowCount ?? 0) > 0;
+  }
+
   async getSmartListMembers(
     name: string,
     limit = 50,

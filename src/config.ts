@@ -13,6 +13,11 @@ const schema = z.object({
   ADMIN_ID: z.coerce.number().default(0),
   // Публичный Telegram-канал (полный URL https://t.me/...). Если задан — в /start появится кнопка.
   CHANNEL_URL: z.string().optional(),
+  // Постинг тизер-алертов В канал. @username или числовой id чата, где бот — админ.
+  // Если не задан — авто-постинг выключен (no-op).
+  CHANNEL_CHAT_ID: z.string().optional(),
+  // Порог по размеру smart-money покупки (TON), ниже которого в канал не постим.
+  CHANNEL_MIN_TON: z.coerce.number().default(50),
   // Листинги: минимальная ликвидность пула для алерта и анти-флуд лимит новых за цикл.
   MIN_LIQUIDITY_USD: z.coerce.number().default(1000),
   MAX_NEW_PER_CYCLE: z.coerce.number().default(30),
