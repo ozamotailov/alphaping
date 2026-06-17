@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <!-- TonSonar caption band — slot 2. -->
+  <defs>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#33B9FF"/>
+      <stop offset="1" stop-color="#0066B8"/>
+    </linearGradient>
+    <style>
+      .cap{font-family:'Segoe UI',Roboto,system-ui,-apple-system,Arial,sans-serif;font-weight:800;fill:#fff;letter-spacing:.5px}
+      .wm{font-family:'Segoe UI',Roboto,system-ui,-apple-system,Arial,sans-serif;font-weight:600;fill:#fff;opacity:.85}
+    </style>
+  </defs>
+  <rect x="0" y="1560" width="1080" height="360" fill="url(#band)"/>
+  <text class="cap" x="540" y="1690" text-anchor="middle" font-size="60">Curated TON smart money</text>
+  <text class="cap" x="540" y="1772" text-anchor="middle" font-size="60">scored by real PnL</text>
+  <text class="wm"  x="540" y="1862" text-anchor="middle" font-size="30">🛰 TonSonar</text>
+</svg>
