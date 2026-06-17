@@ -4,6 +4,17 @@ WORKDIR /app/webapp
 COPY webapp/package*.json ./
 RUN npm ci
 COPY webapp/ ./
+# VITE_* переменные вшиваются в бандл на ЭТАПЕ СБОРКИ, не в рантайме.
+# Railway пробрасывает сервис-переменные как build-арги по имени ARG.
+# VITE_ANALYTICS_* нужны, чтобы DataChief-аналитика была активна (требование tApps).
+ARG VITE_API_URL
+ARG VITE_TONCONNECT_MANIFEST
+ARG VITE_ANALYTICS_TOKEN
+ARG VITE_ANALYTICS_APP
+ENV VITE_API_URL=$VITE_API_URL \
+    VITE_TONCONNECT_MANIFEST=$VITE_TONCONNECT_MANIFEST \
+    VITE_ANALYTICS_TOKEN=$VITE_ANALYTICS_TOKEN \
+    VITE_ANALYTICS_APP=$VITE_ANALYTICS_APP
 RUN npm run build
 
 # ---- Стадия 2: runtime (бэкенд + раздача собранного фронта) ----

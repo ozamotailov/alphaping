@@ -3,11 +3,16 @@ import ReactDOM from "react-dom/client";
 import { TonConnectUIProvider } from "@tonconnect/ui-react";
 import App from "./App";
 import { tg } from "./telegram";
+import { initAnalytics } from "./analytics";
 import "./styles.css";
 
 // Сообщаем Telegram, что приложение готово, и разворачиваем на весь экран.
 tg?.ready();
 tg?.expand();
+
+// Аналитика Telegram Mini Apps (DataChief) — инициализируем ДО рендера (требование SDK).
+// No-op, пока не заданы VITE_ANALYTICS_TOKEN / VITE_ANALYTICS_APP.
+initAnalytics();
 
 // Показ фатальной ошибки прямо в DOM (на телефоне консоли нет) — только если приложение
 // ещё не смонтировалось (истинный «белый экран»), чтобы не затирать рабочий UI.
