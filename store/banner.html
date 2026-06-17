@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>TonSonar — баннер 640×340 для BotFather</title>
+<title>TonSonar — баннер 640×360 для BotFather</title>
 <style>
   body{margin:0;font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0b1220;background:#f4f8fb;text-align:center}
   header{background:linear-gradient(135deg,#33B9FF,#0066B8);color:#fff;padding:18px}
@@ -15,14 +15,14 @@
 </style>
 </head>
 <body>
-  <header><h1>🛰 TonSonar — баннер Mini App (640×340)</h1></header>
+  <header><h1>🛰 TonSonar — баннер Mini App (640×360)</h1></header>
   <div class="wrap">
-    <canvas id="cv" width="640" height="340"></canvas>
-    <div><button id="dl">⬇︎ Скачать PNG 640×340</button></div>
+    <canvas id="cv" width="640" height="360"></canvas>
+    <div><button id="dl">⬇︎ Скачать PNG 640×360</button></div>
     <p class="hint">Открой файл в браузере → «Скачать» → загрузи PNG в BotFather (/newapp → photo).</p>
   </div>
 <script>
-  const W = 640, H = 340;
+  const W = 640, H = 360;
   const cv = document.getElementById("cv"), ctx = cv.getContext("2d");
 
   // фон — фирменный градиент
@@ -50,20 +50,20 @@
     ctx.beginPath(); ctx.arc(373, 174, 14, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
-  logo(140, 170, 0.42);
+  logo(140, 180, 0.42);
 
   // текст
   ctx.fillStyle = "#fff"; ctx.textAlign = "left";
   ctx.font = "800 62px 'Segoe UI',Roboto,system-ui,-apple-system,Arial,sans-serif";
-  ctx.fillText("TonSonar", 256, 168);
+  ctx.fillText("TonSonar", 256, 178);
   ctx.globalAlpha = .92;
   ctx.font = "500 23px 'Segoe UI',Roboto,system-ui,-apple-system,Arial,sans-serif";
-  ctx.fillText("Smart-money radar for TON", 258, 206);
+  ctx.fillText("Smart-money radar for TON", 258, 216);
   ctx.globalAlpha = 1;
 
   document.getElementById("dl").onclick = () => {
     const a = document.createElement("a");
-    a.download = "tonsonar-640x340.png";
+    a.download = "tonsonar-640x360.png";
     a.href = cv.toDataURL("image/png");
     a.click();
   };
