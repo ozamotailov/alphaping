@@ -17,7 +17,7 @@ const schema = z.object({
   // Если не задан — авто-постинг выключен (no-op).
   CHANNEL_CHAT_ID: z.string().optional(),
   // Порог по размеру smart-money покупки (TON), ниже которого в канал не постим.
-  CHANNEL_MIN_TON: z.coerce.number().default(50),
+  CHANNEL_MIN_TON: z.coerce.number().default(20),
   // Листинги: минимальная ликвидность пула для алерта и анти-флуд лимит новых за цикл.
   MIN_LIQUIDITY_USD: z.coerce.number().default(1000),
   MAX_NEW_PER_CYCLE: z.coerce.number().default(30),

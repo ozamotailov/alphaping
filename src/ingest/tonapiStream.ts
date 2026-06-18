@@ -1,4 +1,5 @@
 import type { Repo } from "../db/repo";
+import { config } from "../config";
 import { logger } from "../lib/logger";
 import { streamAccountTransactions } from "./tonapiClient";
 import { processAccount } from "./tonapi";
@@ -21,7 +22,8 @@ export function startAccountStream(repo: Repo, refreshMs = 30_000): NodeJS.Timeo
   async function refresh(): Promise<void> {
     let rows: { raw: string }[];
     try {
-      rows = await repo.proTrackedAddresses();
+      // Публичный канал → smart-money в стриме всегда (даже без Pro-подписчиков).
+      rows = await repo.proTrackedAddresses(undefined, !!config.CHANNEL_CHAT_ID);
     } catch (e) {
       logger.error("proTrackedAddresses failed", String(e));
       return;

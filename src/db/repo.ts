@@ -134,15 +134,18 @@ export class Repo {
   // --- Ingest helpers ---
   // Все отслеживаемые адреса (для бэкфилл-поллера): watch-листы всех юзеров
   // + участники smart-money списка, если есть хотя бы один подписчик.
-  async allTrackedAddresses(listName = SMART_LIST_NAME): Promise<{ raw: string }[]> {
+  // alwaysSmart=true → участники smart-money списка ингестятся ВСЕГДА (без условия о
+  // наличии Pro/Whale-подписчика). Нужно для публичного канала: ему нужна курируемая
+  // альфа ещё до появления платных подписчиков.
+  async allTrackedAddresses(listName = SMART_LIST_NAME, alwaysSmart = false): Promise<{ raw: string }[]> {
     const { rows } = await pool.query<{ raw: string }>(
       `SELECT w.address_raw AS raw FROM wallets w JOIN watches t ON t.wallet_id = w.id
        UNION
        SELECT w.address_raw FROM wallets w
          JOIN smart_list_members m ON m.wallet_id = w.id
          JOIN smart_lists l ON l.id = m.list_id AND l.name = $1
-         WHERE EXISTS (SELECT 1 FROM users u WHERE u.tier IN ('pro','whale') AND u.follows_smartmoney)`,
-      [listName],
+         WHERE ($2::boolean OR EXISTS (SELECT 1 FROM users u WHERE u.tier IN ('pro','whale') AND u.follows_smartmoney))`,
+      [listName, alwaysSmart],
     );
     return rows;
   }
@@ -161,7 +164,7 @@ export class Repo {
 
   // Адреса для реал-тайм SSE: watch-листы Pro/Whale + участники smart-money списка,
   // если есть хотя бы один Pro/Whale подписчик на список.
-  async proTrackedAddresses(listName = SMART_LIST_NAME): Promise<{ raw: string }[]> {
+  async proTrackedAddresses(listName = SMART_LIST_NAME, alwaysSmart = false): Promise<{ raw: string }[]> {
     const { rows } = await pool.query<{ raw: string }>(
       `SELECT w.address_raw AS raw
          FROM wallets w
@@ -172,8 +175,8 @@ export class Repo {
        SELECT w.address_raw FROM wallets w
          JOIN smart_list_members m ON m.wallet_id = w.id
          JOIN smart_lists l ON l.id = m.list_id AND l.name = $1
-         WHERE EXISTS (SELECT 1 FROM users u2 WHERE u2.tier IN ('pro','whale') AND u2.follows_smartmoney)`,
-      [listName],
+         WHERE ($2::boolean OR EXISTS (SELECT 1 FROM users u2 WHERE u2.tier IN ('pro','whale') AND u2.follows_smartmoney))`,
+      [listName, alwaysSmart],
     );
     return rows;
   }

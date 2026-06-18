@@ -59,7 +59,8 @@ export function startPolling(repo: Repo, intervalMs = 60_000): NodeJS.Timeout {
   return setInterval(async () => {
     let addrs: { raw: string }[];
     try {
-      addrs = await repo.allTrackedAddresses();
+      // Если включён публичный канал — smart-money ингестим всегда (без Pro-подписчиков).
+      addrs = await repo.allTrackedAddresses(undefined, !!config.CHANNEL_CHAT_ID);
     } catch (e) {
       logger.error("allTrackedAddresses failed", String(e));
       return;
