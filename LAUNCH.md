@@ -159,4 +159,51 @@ plain-описание, категория DeFi/Tools, лого, скриншо�
 ton.app — делать после.
 
 **awesome-ton (GitHub, ton-community/awesome-ton)** — добавить TonSonar через Pull Request.
-Дёшево, плюс к находимости/доверию.
+Дёшево, плюс к находимости/доверию. Секция **Utilities → Market Analysis**, строка:
+`- [TonSonar](https://t.me/tonsonar_bot) - TON smart-money & wallet alerts with new-listing safety checks and one-tap STON.fi swaps.`
+
+---
+
+## 9. Пост-анонс листинга в tApps (опубликовать в момент аппрува)
+
+Подставь свою ссылку из каталога (формат `t.me/tapps_bot/center?startapp=app_<...>` — придёт после одобрения).
+Приём роста: проси открыть из каталога и нажать **upvote** — это поднимает в топ категории.
+
+**Канал — EN:**
+🎉 TonSonar is now on Telegram Apps Center — the official TON apps catalog 🛰
+[catalog link]
+Smart-money & wallet alerts, new-listing scam checks, one-tap STON.fi swaps — all read-only, inside Telegram.
+👉 Open it from the catalog and upvote if it's useful — it helps others find it 🙏
+🤖 t.me/tonsonar_bot
+
+**Канал — RU:**
+🎉 TonSonar теперь в Telegram Apps Center — официальном каталоге приложений TON 🛰
+[ссылка на каталог]
+Алерты по smart-money и кошелькам, анти-скам проверка листингов, своп через STON.fi в один тап — всё read-only, прямо в Telegram.
+👉 Открой из каталога и поставь upvote, если полезно — так другие найдут быстрее 🙏
+🤖 t.me/tonsonar_bot
+
+**X:**
+🛰 TonSonar is now listed on Telegram Apps Center — the official TON apps catalog.
+Smart-money alerts, new-listing scam checks & one-tap @ston_fi swaps, inside Telegram.
+Open from the catalog 👉 [catalog link]
+Built on TON.
+
+**TG-чаты (короткое, EN):**
+Update for those who tried TonSonar — it's now listed on Telegram Apps Center 🛰 [catalog link].
+If it's been useful, an open + upvote from the catalog really helps. Thanks for the early feedback 🙏
+
+---
+
+## 10. Чеклист дистрибуции (порядок действий)
+
+- [ ] Запушить/задеплоить последние коммиты (исправленный продукт)
+- [ ] ton.app → «Add App» (копи из STORE.md) ← делать первым
+- [ ] awesome-ton → PR (строка из раздела 8)
+- [ ] Tier 1 чаты (`@toncoin_chat`, `@toncoin_rus_chat`) — по 1 посту, на фидбэк
+- [ ] Tier 2 (билдеры: `@tondev`, TON Developers, Ton Society)
+- [ ] Tier 3 (DEX-комьюнити STON.fi/DeDust — строго по правилам)
+- [ ] Co-marketing STON.fi/DeDust (раздел 5)
+- [ ] X — опционально/позже (минимальный профиль как актив доверия)
+- [ ] При аппруве tApps → пост-анонс (раздел 9) + upvote-нудж
+- [ ] Следить за аналитикой DataChief (opens/retention) и фидбэком → решение «докрутить продукт / жать дистрибуцию»
