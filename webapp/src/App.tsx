@@ -94,7 +94,8 @@ export default function App() {
     if (j) void openSwap(j);
   }, [openSwap]);
 
-  // Пересчёт котировки при изменении токена/суммы.
+  // Живой поток котировок Omniston (фолбэк — прямой STON.fi). Держим сессию открытой,
+  // пока панель свопа жива: на момент нажатия «Обменять» quoteId всегда свежий.
   useEffect(() => {
     if (!swapTarget) return;
     const a = parseFloat(swapAmount);
@@ -103,14 +104,36 @@ export default function App() {
       return;
     }
     let cancelled = false;
+    let session: { close(): void } | null = null;
     setQuoting(true);
+    setQuote(null);
     import("./swap")
-      .then(({ quoteTonToJetton }) => quoteTonToJetton(swapTarget.jetton, a))
-      .then((q) => !cancelled && setQuote(q))
-      .catch(() => !cancelled && setQuote(null))
-      .finally(() => !cancelled && setQuoting(false));
+      .then(({ openQuote }) => {
+        if (cancelled) return;
+        session = openQuote(
+          swapTarget.jetton,
+          a,
+          (q) => {
+            if (cancelled) return;
+            setQuote(q);
+            setQuoting(false);
+          },
+          () => {
+            if (cancelled) return;
+            setQuote(null);
+            setQuoting(false);
+          },
+        );
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQuote(null);
+          setQuoting(false);
+        }
+      });
     return () => {
       cancelled = true;
+      session?.close();
     };
   }, [swapTarget, swapAmount]);
 
@@ -172,11 +195,16 @@ export default function App() {
     setBusy(true);
     setErr(null);
     try {
-      const { buildTonToJettonTx } = await import("./swap");
-      const msg = await buildTonToJettonTx(tonAddress, quote);
+      const { buildSwapTx } = await import("./swap");
+      const messages = await buildSwapTx(tonAddress, quote);
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 300,
-        messages: [{ address: msg.address, amount: msg.amount, payload: msg.payload }],
+        messages: messages.map((m) => ({
+          address: m.address,
+          amount: m.amount,
+          payload: m.payload,
+          stateInit: m.stateInit,
+        })),
       });
       setSwapTarget(null);
       setQuote(null);
@@ -262,12 +290,19 @@ export default function App() {
               ? t("quoting")
               : quote
                 ? t("swap_receive", {
-                    qty: fmtQty(Number(quote.askUnits) / 10 ** swapTarget.decimals),
+                    qty: fmtQty(Number(quote.outUnits) / 10 ** swapTarget.decimals),
                     sym: swapTarget.symbol || "",
-                    x: (Number(quote.priceImpact) * 100).toFixed(2),
                   })
                 : t("swap_enter_amount")}
           </div>
+          {!quoting && quote && (
+            <div className="muted small">
+              {t("swap_via", { via: quote.via })}
+              {quote.priceImpact != null
+                ? ` · ${t("swap_impact", { x: (Number(quote.priceImpact) * 100).toFixed(2) })}`
+                : ""}
+            </div>
+          )}
           <button className="btn primary" disabled={busy || !quote || !tonAddress} onClick={doSwap}>
             {tonAddress ? t("swap_btn") : t("swap_btn_noconnect")}
           </button>

@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@ston-fi/api": "^0.32.0",
+    "@ston-fi/omniston-sdk": "^0.8.3",
     "@ston-fi/sdk": "^2.7.0",
     "@telegram-apps/analytics": "^1.6.4",
     "@ton/ton": "^16.3.0",
